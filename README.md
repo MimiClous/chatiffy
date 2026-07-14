@@ -31,13 +31,30 @@ PORT=3000 npm start
 
 ### Docker
 
+Создайте серверный файл с секретами (он исключён из Git):
+
 ```bash
-docker build -t zakvielchat .
-docker run -d --restart unless-stopped -p 8080:8080 \
-  -e TWITCH_CLIENT_ID='ваш_client_id' \
-  -e TWITCH_CLIENT_SECRET='ваш_client_secret' \
-  --name zakvielchat zakvielchat
+cp .env.example .env
+nano .env
 ```
+
+Заполните `.env`:
+
+```dotenv
+TWITCH_CLIENT_ID=ваш_client_id
+TWITCH_CLIENT_SECRET=ваш_client_secret
+APP_PORT=8080
+```
+
+Запустите через Compose:
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f
+```
+
+Для последующих обновлений: `git pull && docker compose up -d --build`.
 
 После этого в OBS укажите URL `http://IP_СЕРВЕРА:8080`.
 
