@@ -8,7 +8,7 @@
   const storagePrefix = `zakvielchat:${instanceId}:`;
   const stored = (key) => localStorage.getItem(`${storagePrefix}${key}`);
   const save = (key, value) => localStorage.setItem(`${storagePrefix}${key}`, String(value));
-  const settingsVersion = 3;
+  const settingsVersion = 4;
   const hasCurrentSettings = Number(stored('settingsVersion')) >= settingsVersion;
   const config = {
     channel: (params.get('channel') || stored('channel') || 'zakvielchannel').toLowerCase().replace(/^#/, ''),
@@ -17,7 +17,11 @@
     maxMessages: +(params.get('max') || (hasCurrentSettings && stored('maxMessages')) || 9),
     background: (params.get('background') || (hasCurrentSettings && stored('background')) || '0') !== '0',
     theme: params.get('theme') || stored('theme') || 'glass',
-    align: params.get('align') || stored('align') || 'left'
+    align: params.get('align') || stored('align') || 'left',
+    textColor: params.get('text') || stored('textColor') || '#ffffff',
+    panelOpacity: +(params.get('panel') || stored('panelOpacity') || 32),
+    vignette: +(params.get('vignette') || stored('vignette') || 55),
+    radius: +(params.get('radius') || stored('radius') || 24)
   };
   let socket;
   let reconnectTimer;
@@ -45,7 +49,18 @@
     $('backgroundInput').checked = config.background;
     $('themeInput').value = config.theme;
     $('alignInput').value = config.align;
+    $('textColorInput').value = config.textColor;
+    $('panelOpacityInput').value = config.panelOpacity;
+    $('panelOpacityOutput').value = `${config.panelOpacity}%`;
+    $('vignetteInput').value = config.vignette;
+    $('vignetteOutput').value = `${config.vignette}%`;
+    $('radiusInput').value = config.radius;
+    $('radiusOutput').value = `${config.radius} px`;
     document.documentElement.style.setProperty('--font-size', `${config.fontSize}px`);
+    document.documentElement.style.setProperty('--text-color', config.textColor);
+    document.documentElement.style.setProperty('--panel-opacity', (config.panelOpacity / 100).toFixed(2));
+    document.documentElement.style.setProperty('--vignette', (config.vignette / 100).toFixed(2));
+    document.documentElement.style.setProperty('--panel-radius', `${config.radius}px`);
     chat.classList.toggle('with-background', config.background);
     chat.classList.toggle('align-right', config.align === 'right');
     chat.classList.remove('theme-glass', 'theme-clean', 'theme-neon');
@@ -290,6 +305,10 @@
     config.background = $('backgroundInput').checked;
     config.theme = $('themeInput').value;
     config.align = $('alignInput').value;
+    config.textColor = $('textColorInput').value;
+    config.panelOpacity = +$('panelOpacityInput').value;
+    config.vignette = +$('vignetteInput').value;
+    config.radius = +$('radiusInput').value;
     for (const [key, value] of Object.entries(config)) save(key, value ? String(value) : '0');
     save('settingsVersion', settingsVersion);
     const shareParams = new URLSearchParams({
@@ -300,7 +319,11 @@
       max: String(config.maxMessages),
       background: config.background ? '1' : '0',
       theme: config.theme,
-      align: config.align
+      align: config.align,
+      text: config.textColor,
+      panel: String(config.panelOpacity),
+      vignette: String(config.vignette),
+      radius: String(config.radius)
     });
     history.replaceState(null, '', `${location.pathname}?${shareParams}`);
     syncUi();
@@ -313,6 +336,40 @@
   $('fontSizeInput').oninput = () => { $('fontSizeOutput').value = `${$('fontSizeInput').value} px`; };
   $('lifetimeInput').oninput = () => { $('lifetimeOutput').value = +$('lifetimeInput').value ? `${$('lifetimeInput').value} сек` : 'всегда'; };
   $('applyButton').onclick = apply;
+  $('copyButton').onclick = async () => {
+    apply();
+    try {
+      await navigator.clipboard.writeText(location.href);
+      $('copyButton').textContent = 'Ссылка скопирована ✓';
+    } catch (_) {
+      prompt('Скопируйте ссылку для OBS:', location.href);
+    }
+    setTimeout(() => { $('copyButton').textContent = 'Скопировать ссылку для OBS'; }, 1800);
+  };
+
+  const liveControls = ['fontSizeInput', 'backgroundInput', 'themeInput', 'alignInput', 'textColorInput', 'panelOpacityInput', 'vignetteInput', 'radiusInput'];
+  for (const id of liveControls) $(id).addEventListener('input', () => {
+    config.fontSize = +$('fontSizeInput').value;
+    config.background = $('backgroundInput').checked;
+    config.theme = $('themeInput').value;
+    config.align = $('alignInput').value;
+    config.textColor = $('textColorInput').value;
+    config.panelOpacity = +$('panelOpacityInput').value;
+    config.vignette = +$('vignetteInput').value;
+    config.radius = +$('radiusInput').value;
+    syncUi();
+  });
+
+  const presets = {
+    soft: { fontSize: 28, panelOpacity: 32, vignette: 55, radius: 24, background: false, theme: 'glass' },
+    compact: { fontSize: 22, panelOpacity: 45, vignette: 35, radius: 12, background: false, theme: 'clean' },
+    neon: { fontSize: 28, panelOpacity: 28, vignette: 72, radius: 26, background: true, theme: 'neon' },
+    transparent: { fontSize: 28, panelOpacity: 0, vignette: 0, radius: 0, background: false, theme: 'glass' }
+  };
+  for (const button of document.querySelectorAll('[data-preset]')) button.onclick = () => {
+    Object.assign(config, presets[button.dataset.preset]);
+    syncUi();
+  };
   addEventListener('resize', updateScale);
   if (!hasCurrentSettings) {
     save('maxMessages', config.maxMessages);

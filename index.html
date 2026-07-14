@@ -30,8 +30,19 @@
           <option value="right">Справа</option>
         </select>
       </label>
+      <label>Цвет текста <input id="textColorInput" type="color" value="#ffffff"></label>
+      <label>Прозрачность панели <input id="panelOpacityInput" type="range" min="0" max="80" value="32"><output id="panelOpacityOutput">32%</output></label>
+      <label>Сила виньетки <input id="vignetteInput" type="range" min="0" max="100" value="55"><output id="vignetteOutput">55%</output></label>
+      <label>Скругление <input id="radiusInput" type="range" min="0" max="40" value="24"><output id="radiusOutput">24 px</output></label>
       <label class="check"><input id="backgroundInput" type="checkbox"> Отдельные подложки сообщений</label>
+      <div class="presets" aria-label="Готовые стили">
+        <button type="button" data-preset="soft">Мягкий</button>
+        <button type="button" data-preset="compact">Компактный</button>
+        <button type="button" data-preset="neon">Неон</button>
+        <button type="button" data-preset="transparent">Без фона</button>
+      </div>
       <button id="applyButton">Применить и подключиться</button>
+      <button id="copyButton" type="button">Скопировать ссылку для OBS</button>
       <p>Для OBS добавьте «Браузер» → «Локальный файл» и выберите этот HTML. Шестерёнка скрывается при захвате.</p>
       <p id="debug"></p>
     </aside>
