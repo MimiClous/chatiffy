@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Zakviel Chat Overlay</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <section id="chat" aria-live="polite"></section>
+    <div id="connectionBadge"><span class="pulse"></span><span id="status">Подключение…</span></div>
+    <button id="settingsButton" title="Настройки">⚙</button>
+    <aside id="settings" hidden>
+      <h1>Настройки оверлея</h1>
+      <label>Канал Twitch <input id="channelInput" value="zakvielchannel" autocomplete="off"></label>
+      <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>
+      <label>Сообщение видно <input id="lifetimeInput" type="range" min="0" max="120" value="35"><output id="lifetimeOutput">35 сек</output></label>
+      <label>Максимум сообщений <input id="maxMessagesInput" type="number" min="5" max="200" value="40"></label>
+      <label>Стиль
+        <select id="themeInput">
+          <option value="glass">Стекло</option>
+          <option value="clean">Чистый</option>
+          <option value="neon">Неон</option>
+        </select>
+      </label>
+      <label>Выравнивание
+        <select id="alignInput">
+          <option value="left">Слева</option>
+          <option value="right">Справа</option>
+        </select>
+      </label>
+      <label class="check"><input id="backgroundInput" type="checkbox" checked> Подложка у сообщений</label>
+      <button id="applyButton">Применить и подключиться</button>
+      <p>Для OBS добавьте «Браузер» → «Локальный файл» и выберите этот HTML. Шестерёнка скрывается при захвате.</p>
+      <p id="debug"></p>
+    </aside>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

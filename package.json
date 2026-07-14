@@ -1,0 +1,14 @@
+{
+  "name": "zakviel-chat-overlay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Twitch chat overlay for OBS with 7TV emotes and Twitch badges",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check app.js && node --check server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
