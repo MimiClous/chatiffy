@@ -4,16 +4,20 @@
   const $ = (id) => document.getElementById(id);
   const chat = $('chat');
   const params = new URLSearchParams(location.search);
+  const instanceId = params.get('instance') || `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const storagePrefix = `zakvielchat:${instanceId}:`;
+  const stored = (key) => localStorage.getItem(`${storagePrefix}${key}`);
+  const save = (key, value) => localStorage.setItem(`${storagePrefix}${key}`, String(value));
   const settingsVersion = 3;
-  const hasCurrentSettings = Number(localStorage.getItem('settingsVersion')) >= settingsVersion;
+  const hasCurrentSettings = Number(stored('settingsVersion')) >= settingsVersion;
   const config = {
-    channel: (params.get('channel') || localStorage.getItem('channel') || 'zakvielchannel').toLowerCase().replace(/^#/, ''),
-    fontSize: +(params.get('size') || localStorage.getItem('fontSize') || 28),
-    lifetime: +(params.get('lifetime') || localStorage.getItem('lifetime') || 35),
-    maxMessages: +(params.get('max') || (hasCurrentSettings && localStorage.getItem('maxMessages')) || 9),
-    background: (params.get('background') || (hasCurrentSettings && localStorage.getItem('background')) || '0') !== '0',
-    theme: params.get('theme') || localStorage.getItem('theme') || 'glass',
-    align: params.get('align') || localStorage.getItem('align') || 'left'
+    channel: (params.get('channel') || stored('channel') || 'zakvielchannel').toLowerCase().replace(/^#/, ''),
+    fontSize: +(params.get('size') || stored('fontSize') || 28),
+    lifetime: +(params.get('lifetime') || stored('lifetime') || 35),
+    maxMessages: +(params.get('max') || (hasCurrentSettings && stored('maxMessages')) || 9),
+    background: (params.get('background') || (hasCurrentSettings && stored('background')) || '0') !== '0',
+    theme: params.get('theme') || stored('theme') || 'glass',
+    align: params.get('align') || stored('align') || 'left'
   };
   let socket;
   let reconnectTimer;
@@ -286,9 +290,10 @@
     config.background = $('backgroundInput').checked;
     config.theme = $('themeInput').value;
     config.align = $('alignInput').value;
-    for (const [key, value] of Object.entries(config)) localStorage.setItem(key, value ? String(value) : '0');
-    localStorage.setItem('settingsVersion', String(settingsVersion));
+    for (const [key, value] of Object.entries(config)) save(key, value ? String(value) : '0');
+    save('settingsVersion', settingsVersion);
     const shareParams = new URLSearchParams({
+      instance: instanceId,
       channel: config.channel,
       size: String(config.fontSize),
       lifetime: String(config.lifetime),
@@ -310,9 +315,13 @@
   $('applyButton').onclick = apply;
   addEventListener('resize', updateScale);
   if (!hasCurrentSettings) {
-    localStorage.setItem('maxMessages', String(config.maxMessages));
-    localStorage.setItem('background', config.background ? '1' : '0');
-    localStorage.setItem('settingsVersion', String(settingsVersion));
+    save('maxMessages', config.maxMessages);
+    save('background', config.background ? '1' : '0');
+    save('settingsVersion', settingsVersion);
+  }
+  if (!params.has('instance')) {
+    params.set('instance', instanceId);
+    history.replaceState(null, '', `${location.pathname}?${params}`);
   }
   syncUi();
   Promise.allSettled([load7tv(), loadBadges()]).finally(connect);

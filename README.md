@@ -74,7 +74,9 @@ docker compose logs -f
 
 `index.html?channel=zakvielchannel&size=28&lifetime=35&max=9&background=0&theme=glass&align=left`
 
-Один сервер поддерживает любое количество независимых OBS-клиентов. Например:
+Один сервер поддерживает любое количество независимых OBS-клиентов. Каждый новый
+клиент автоматически получает параметр `instance`, который изолирует его GUI и
+сохранённые настройки даже от других Browser Source на том же компьютере. Например:
 
 ```text
 http://SERVER:8080/?channel=zakvielchannel
