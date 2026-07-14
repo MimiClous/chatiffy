@@ -55,7 +55,7 @@ docker run -d --restart unless-stopped -p 8080:8080 \
 
 Если оверлей раздаётся веб-сервером, настройки можно передать в URL:
 
-`index.html?channel=zakvielchannel&size=28&lifetime=35&max=40&background=1&theme=glass&align=left`
+`index.html?channel=zakvielchannel&size=28&lifetime=35&max=9&background=0&theme=glass&align=left`
 
 - `lifetime=0` — не удалять старые сообщения по таймеру.
 - `background=0` — убрать тёмную подложку.

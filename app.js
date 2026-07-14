@@ -4,12 +4,14 @@
   const $ = (id) => document.getElementById(id);
   const chat = $('chat');
   const params = new URLSearchParams(location.search);
+  const settingsVersion = 3;
+  const hasCurrentSettings = Number(localStorage.getItem('settingsVersion')) >= settingsVersion;
   const config = {
     channel: (params.get('channel') || localStorage.getItem('channel') || 'zakvielchannel').toLowerCase().replace(/^#/, ''),
     fontSize: +(params.get('size') || localStorage.getItem('fontSize') || 28),
     lifetime: +(params.get('lifetime') || localStorage.getItem('lifetime') || 35),
-    maxMessages: +(params.get('max') || localStorage.getItem('maxMessages') || 40),
-    background: (params.get('background') || localStorage.getItem('background') || '1') !== '0',
+    maxMessages: +(params.get('max') || (hasCurrentSettings && localStorage.getItem('maxMessages')) || 9),
+    background: (params.get('background') || (hasCurrentSettings && localStorage.getItem('background')) || '0') !== '0',
     theme: params.get('theme') || localStorage.getItem('theme') || 'glass',
     align: params.get('align') || localStorage.getItem('align') || 'left'
   };
@@ -274,11 +276,12 @@
     config.channel = $('channelInput').value.trim().toLowerCase().replace(/^#/, '') || 'zakvielchannel';
     config.fontSize = +$('fontSizeInput').value;
     config.lifetime = +$('lifetimeInput').value;
-    config.maxMessages = Math.max(5, +$('maxMessagesInput').value || 40);
+    config.maxMessages = Math.min(30, Math.max(5, +$('maxMessagesInput').value || 9));
     config.background = $('backgroundInput').checked;
     config.theme = $('themeInput').value;
     config.align = $('alignInput').value;
     for (const [key, value] of Object.entries(config)) localStorage.setItem(key, value ? String(value) : '0');
+    localStorage.setItem('settingsVersion', String(settingsVersion));
     syncUi();
     $('settings').hidden = true;
     chat.replaceChildren();
@@ -290,6 +293,11 @@
   $('lifetimeInput').oninput = () => { $('lifetimeOutput').value = +$('lifetimeInput').value ? `${$('lifetimeInput').value} сек` : 'всегда'; };
   $('applyButton').onclick = apply;
   addEventListener('resize', updateScale);
+  if (!hasCurrentSettings) {
+    localStorage.setItem('maxMessages', String(config.maxMessages));
+    localStorage.setItem('background', config.background ? '1' : '0');
+    localStorage.setItem('settingsVersion', String(settingsVersion));
+  }
   syncUi();
   Promise.allSettled([load7tv(), loadBadges()]).finally(connect);
 })();
