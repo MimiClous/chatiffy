@@ -9,6 +9,7 @@ const host = process.env.HOST || '0.0.0.0';
 const twitchClientId = process.env.TWITCH_CLIENT_ID || '';
 const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET || '';
 let twitchToken = { value: '', expiresAt: 0 };
+const channelCache = new Map();
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -75,6 +76,27 @@ const server = http.createServer(async (request, response) => {
         twitchApi(`/chat/badges?broadcaster_id=${channelId}`)
       ]);
       sendJson(response, 200, { global: globalBadges.data, channel: channelBadges.data });
+      return;
+    }
+
+    // Преобразование логина в Twitch ID для произвольных каналов.
+    if (url.pathname === '/api/channel') {
+      const login = (url.searchParams.get('login') || '').trim().toLowerCase();
+      if (!/^[a-z0-9_]{1,25}$/.test(login)) {
+        sendJson(response, 400, { error: 'Valid Twitch login is required' });
+        return;
+      }
+      let channel = channelCache.get(login);
+      if (!channel || Date.now() > channel.expiresAt) {
+        const result = await twitchApi(`/users?login=${encodeURIComponent(login)}`);
+        if (!result.data?.[0]) {
+          sendJson(response, 404, { error: 'Twitch channel not found' });
+          return;
+        }
+        channel = { ...result.data[0], expiresAt: Date.now() + 6 * 60 * 60 * 1000 };
+        channelCache.set(login, channel);
+      }
+      sendJson(response, 200, { id: channel.id, login: channel.login, displayName: channel.display_name });
       return;
     }
 

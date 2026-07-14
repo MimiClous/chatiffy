@@ -58,6 +58,12 @@
     const knownChannels = { zakvielchannel: '44407373' };
     if (knownChannels[channel]) return knownChannels[channel];
     const resolvers = [
+      async () => {
+        if (location.protocol !== 'http:' && location.protocol !== 'https:') return '';
+        const response = await fetch(`/api/channel?login=${encodeURIComponent(channel)}`);
+        if (!response.ok) return '';
+        return (await response.json()).id;
+      },
       async () => (await fetch(`https://api.ivr.fi/v2/twitch/user?login=${encodeURIComponent(channel)}`)).json().then(x => x[0]?.id),
       async () => (await fetch(`https://decapi.me/twitch/id/${encodeURIComponent(channel)}`)).text()
     ];
@@ -282,6 +288,16 @@
     config.align = $('alignInput').value;
     for (const [key, value] of Object.entries(config)) localStorage.setItem(key, value ? String(value) : '0');
     localStorage.setItem('settingsVersion', String(settingsVersion));
+    const shareParams = new URLSearchParams({
+      channel: config.channel,
+      size: String(config.fontSize),
+      lifetime: String(config.lifetime),
+      max: String(config.maxMessages),
+      background: config.background ? '1' : '0',
+      theme: config.theme,
+      align: config.align
+    });
+    history.replaceState(null, '', `${location.pathname}?${shareParams}`);
     syncUi();
     $('settings').hidden = true;
     chat.replaceChildren();

@@ -74,6 +74,17 @@ docker compose logs -f
 
 `index.html?channel=zakvielchannel&size=28&lifetime=35&max=9&background=0&theme=glass&align=left`
 
+Один сервер поддерживает любое количество независимых OBS-клиентов. Например:
+
+```text
+http://SERVER:8080/?channel=zakvielchannel
+http://SERVER:8080/?channel=anotherstreamer&theme=neon&align=right
+```
+
+После нажатия «Применить» адресная строка обновляется и содержит все выбранные
+настройки. Этот URL можно скопировать другому пользователю. Чаты и настройки разных
+URL не смешиваются.
+
 - `lifetime=0` — не удалять старые сообщения по таймеру.
 - `background=0` — убрать тёмную подложку.
 - `theme=glass`, `clean` или `neon` — оформление сообщений.
