@@ -6,11 +6,20 @@
 
 Требуется Node.js 20 или новее. Устанавливать npm-пакеты не нужно.
 
+Для полного каталога пользовательских бейджей Twitch создайте приложение на
+`https://dev.twitch.tv/console/apps` и скопируйте Client ID и Client Secret.
+
 ```bash
 unzip zakvielchat-server.zip
 cd zakvielchat
+export TWITCH_CLIENT_ID='ваш_client_id'
+export TWITCH_CLIENT_SECRET='ваш_client_secret'
 npm start
 ```
+
+Секрет используется только сервером и никогда не отправляется в OBS. Без этих
+переменных продолжат работать основные встроенные бейджи: broadcaster, moderator,
+VIP, subscriber и founder.
 
 По умолчанию страница откроется на `http://IP_СЕРВЕРА:8080`. Порт можно изменить:
 
@@ -24,7 +33,10 @@ PORT=3000 npm start
 
 ```bash
 docker build -t zakvielchat .
-docker run -d --restart unless-stopped -p 8080:8080 --name zakvielchat zakvielchat
+docker run -d --restart unless-stopped -p 8080:8080 \
+  -e TWITCH_CLIENT_ID='ваш_client_id' \
+  -e TWITCH_CLIENT_SECRET='ваш_client_secret' \
+  --name zakvielchat zakvielchat
 ```
 
 После этого в OBS укажите URL `http://IP_СЕРВЕРА:8080`.

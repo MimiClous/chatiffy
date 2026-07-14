@@ -110,6 +110,17 @@
     }
   }
 
+  function addHelixBadges(sets, target) {
+    for (const set of sets || []) {
+      for (const version of set.versions || []) {
+        target.set(`${set.set_id}/${version.id}`, {
+          url: version.image_url_2x || version.image_url_1x,
+          title: version.title || set.set_id
+        });
+      }
+    }
+  }
+
   async function loadBadges() {
     const cdn = (id) => `https://static-cdn.jtvnw.net/badges/v1/${id}/2`;
     const next = new Map([
@@ -121,18 +132,16 @@
     ]);
     twitchBadges = next;
 
-    // Старый публичный каталог иногда доступен через кэш/прокси OBS.
-    // Ошибка не мешает встроенным основным бейджам работать.
     try {
       const channelId = await resolveTwitchId(config.channel);
-      for (const url of [
-        'https://badges.twitch.tv/v1/badges/global/display',
-        `https://badges.twitch.tv/v1/badges/channels/${channelId}/display`
-      ]) {
-        try {
-          const response = await fetch(url);
-          if (response.ok) addBadgeSets(await response.json(), next);
-        } catch (_) { /* используем встроенные бейджи */ }
+      // На HTTP-сервере полный каталог безопасно загружается через локальный API.
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        const response = await fetch(`/api/badges?channelId=${channelId}`);
+        if (response.ok) {
+          const data = await response.json();
+          addHelixBadges(data.global, next);
+          addHelixBadges(data.channel, next); // Канальные версии имеют приоритет.
+        }
       }
       twitchBadges = next;
     } catch (_) { /* встроенного набора достаточно */ }
