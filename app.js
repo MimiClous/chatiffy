@@ -8,12 +8,12 @@
   const storagePrefix = `zakvielchat:${instanceId}:`;
   const stored = (key) => localStorage.getItem(`${storagePrefix}${key}`);
   const save = (key, value) => localStorage.setItem(`${storagePrefix}${key}`, String(value));
-  const settingsVersion = 4;
+  const settingsVersion = 5;
   const hasCurrentSettings = Number(stored('settingsVersion')) >= settingsVersion;
   const config = {
     channel: (params.get('channel') || stored('channel') || 'zakvielchannel').toLowerCase().replace(/^#/, ''),
     fontSize: +(params.get('size') || stored('fontSize') || 28),
-    lifetime: +(params.get('lifetime') || stored('lifetime') || 35),
+    lifetime: +(params.get('lifetime') || stored('lifetime') || 0),
     maxMessages: +(params.get('max') || (hasCurrentSettings && stored('maxMessages')) || 9),
     background: (params.get('background') || (hasCurrentSettings && stored('background')) || '0') !== '0',
     theme: params.get('theme') || stored('theme') || 'glass',
@@ -297,6 +297,23 @@
     };
   }
 
+  function buildShareParams() {
+    return new URLSearchParams({
+      instance: instanceId,
+      channel: config.channel,
+      size: String(config.fontSize),
+      lifetime: String(config.lifetime),
+      max: String(config.maxMessages),
+      background: config.background ? '1' : '0',
+      theme: config.theme,
+      align: config.align,
+      text: config.textColor,
+      panel: String(config.panelOpacity),
+      vignette: String(config.vignette),
+      radius: String(config.radius)
+    });
+  }
+
   function apply() {
     config.channel = $('channelInput').value.trim().toLowerCase().replace(/^#/, '') || 'zakvielchannel';
     config.fontSize = +$('fontSizeInput').value;
@@ -311,20 +328,7 @@
     config.radius = +$('radiusInput').value;
     for (const [key, value] of Object.entries(config)) save(key, value ? String(value) : '0');
     save('settingsVersion', settingsVersion);
-    const shareParams = new URLSearchParams({
-      instance: instanceId,
-      channel: config.channel,
-      size: String(config.fontSize),
-      lifetime: String(config.lifetime),
-      max: String(config.maxMessages),
-      background: config.background ? '1' : '0',
-      theme: config.theme,
-      align: config.align,
-      text: config.textColor,
-      panel: String(config.panelOpacity),
-      vignette: String(config.vignette),
-      radius: String(config.radius)
-    });
+    const shareParams = buildShareParams();
     history.replaceState(null, '', `${location.pathname}?${shareParams}`);
     syncUi();
     $('settings').hidden = true;
@@ -338,11 +342,14 @@
   $('applyButton').onclick = apply;
   $('copyButton').onclick = async () => {
     apply();
+    const overlayUrl = location.protocol.startsWith('http')
+      ? new URL(`/overlay?${buildShareParams()}`, location.origin).href
+      : location.href;
     try {
-      await navigator.clipboard.writeText(location.href);
+      await navigator.clipboard.writeText(overlayUrl);
       $('copyButton').textContent = 'Ссылка скопирована ✓';
     } catch (_) {
-      prompt('Скопируйте ссылку для OBS:', location.href);
+      prompt('Скопируйте ссылку для OBS:', overlayUrl);
     }
     setTimeout(() => { $('copyButton').textContent = 'Скопировать ссылку для OBS'; }, 1800);
   };
@@ -380,6 +387,7 @@
     params.set('instance', instanceId);
     history.replaceState(null, '', `${location.pathname}?${params}`);
   }
+  if (location.pathname === '/overlay') document.body.classList.add('overlay-mode');
   syncUi();
   Promise.allSettled([load7tv(), loadBadges()]).finally(connect);
 })();

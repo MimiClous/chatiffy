@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Zakviel Chat Overlay</title>
+  <title>Chatiffy — Twitch Chat Overlay</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="app">
     <section id="chat" aria-live="polite"></section>
-    <div id="connectionBadge"><span class="pulse"></span><span id="status">Подключение…</span></div>
+    <div id="connectionBadge"><span class="loader"><i></i></span><span id="status">Подключение…</span></div>
     <button id="settingsButton" title="Настройки">⚙</button>
     <aside id="settings" hidden>
-      <h1>Настройки оверлея</h1>
+      <h1>Chatiffy</h1>
       <label>Канал Twitch <input id="channelInput" value="zakvielchannel" autocomplete="off"></label>
       <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>
-      <label>Сообщение видно <input id="lifetimeInput" type="range" min="0" max="120" value="35"><output id="lifetimeOutput">35 сек</output></label>
+      <label>Сообщение видно <input id="lifetimeInput" type="range" min="0" max="120" value="0"><output id="lifetimeOutput">всегда</output></label>
       <label>Максимум сообщений <input id="maxMessagesInput" type="number" min="5" max="30" value="9"></label>
       <label>Стиль
         <select id="themeInput">

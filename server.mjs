@@ -105,7 +105,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    const requested = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
+    const requested = decodeURIComponent((url.pathname === '/' || url.pathname === '/overlay') ? '/index.html' : url.pathname);
     const safePath = normalize(requested).replace(/^(\.\.[/\\])+/, '');
     const filePath = join(root, safePath);
 
@@ -133,5 +133,5 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`Zakviel Chat: http://${host}:${port}`);
+  console.log(`Chatiffy: http://${host}:${port}`);
 });

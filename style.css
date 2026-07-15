@@ -16,13 +16,16 @@ body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: white; }
 .badge { display: block; width: 1em; height: 1em; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
 .author { font-weight: 800; margin-right: .3em; }
 .emote { display: inline-block; height: 1.45em; width: auto; max-width: 4.5em; vertical-align: -.34em; object-fit: contain; margin: 0 .04em; filter: drop-shadow(0 1px 1px rgba(0,0,0,.65)); }
-#connectionBadge { position: absolute; left: 12px; top: 12px; display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; background: rgba(10,10,15,.78); color: #ddd; font-size: 12px; opacity: 0; translate: 0 -6px; transition: .25s; pointer-events: none; }
-#connectionBadge.visible { opacity: 1; translate: 0 0; }
-.pulse { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 8px currentColor; }
-#connectionBadge.error .pulse { background: #ef4444; }
+#connectionBadge { position: absolute; z-index: 30; left: 50%; top: 50%; display: flex; align-items: center; gap: 12px; min-width: 190px; justify-content: center; padding: 12px 18px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: linear-gradient(120deg, rgba(14,14,22,.9), rgba(38,31,58,.82)); box-shadow: 0 12px 38px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.08); backdrop-filter: blur(10px); color: #eee; font-size: 14px; font-weight: 650; letter-spacing: .01em; opacity: 0; translate: -50% calc(-50% + 10px); scale: .96; transition: opacity .3s, translate .3s, scale .3s; pointer-events: none; }
+#connectionBadge.visible { opacity: 1; translate: -50% -50%; scale: 1; }
+.loader { position: relative; width: 22px; height: 22px; border: 2px solid rgba(167,139,250,.2); border-top-color: #a78bfa; border-radius: 50%; animation: spin .8s linear infinite; }
+.loader i { position: absolute; inset: 4px; border-radius: 50%; background: #8b5cf6; box-shadow: 0 0 12px #8b5cf6; animation: breathe 1.2s ease-in-out infinite; }
+#connectionBadge.error .loader { border-color: rgba(239,68,68,.25); border-top-color: #ef4444; animation-duration: 1.8s; }
+#connectionBadge.error .loader i { background: #ef4444; box-shadow: 0 0 12px #ef4444; }
 #settingsButton { position: absolute; right: 12px; top: 12px; width: 42px; height: 42px; opacity: 0; border: 0; border-radius: 50%; font-size: 21px; cursor: pointer; transition: opacity .2s; }
 #app:hover #settingsButton, #settingsButton:focus { opacity: .38; }
 #settingsButton:hover { opacity: 1; }
+.overlay-mode #settingsButton, .overlay-mode #settings { display: none !important; }
 #settings { position: absolute; z-index: 20; right: 12px; top: 62px; width: min(410px, calc(100% - 24px)); max-height: calc(100% - 74px); overflow-y: auto; padding: 20px; border-radius: 14px; background: rgba(18,18,24,.97); box-shadow: 0 12px 40px #000; font-size: 14px; }
 #settings h1 { margin: 0 0 16px; font-size: 21px; }
 #settings label { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin: 12px 0; }
@@ -38,5 +41,7 @@ body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: white; }
 #debug { color: #ffb4b4 !important; }
 @keyframes enter { from { opacity: 0; translate: 0 16px; scale: .96; } }
 @keyframes leave { to { opacity: 0; translate: -12px 0; } }
+@keyframes spin { to { rotate: 360deg; } }
+@keyframes breathe { 50% { scale: .55; opacity: .55; } }
 @media (max-width: 420px) { .message { max-width: 100%; } #settings { padding: 15px; } }
 @media (hover: none) { #settingsButton { opacity: .2; } }
