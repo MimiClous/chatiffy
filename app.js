@@ -4,6 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const chat = $('chat');
   const params = new URLSearchParams(location.search);
+  const isOverlay = location.pathname === '/overlay';
   const requestedInstance = params.get('instance') || '';
   const instanceId = /^[a-z0-9_-]{4,64}$/i.test(requestedInstance)
     ? requestedInstance
@@ -482,11 +483,16 @@
     const shareParams = buildShareParams();
     history.replaceState(null, '', `${location.pathname}?${shareParams}`);
     syncUi();
-    $('settings').hidden = true;
-    chat.replaceChildren();
-    seenMessageIds.clear();
-    connect();
-    refreshAssets(config.channel);
+    if (isOverlay) {
+      $('settings').hidden = true;
+      chat.replaceChildren();
+      seenMessageIds.clear();
+      connect();
+      refreshAssets(config.channel);
+    } else {
+      $('settings').hidden = false;
+      $('debug').textContent = 'Настройки сохранены. Ссылка для OBS обновлена.';
+    }
     return shareParams;
   }
 
@@ -551,8 +557,13 @@
     params.set('instance', instanceId);
     history.replaceState(null, '', `${location.pathname}?${params}`);
   }
-  if (location.pathname === '/overlay') document.body.classList.add('overlay-mode');
+  document.body.classList.add(isOverlay ? 'overlay-mode' : 'editor-mode');
   syncUi();
-  connect();
-  refreshAssets(config.channel);
+  if (isOverlay) {
+    connect();
+    refreshAssets(config.channel);
+  } else {
+    $('settings').hidden = false;
+    $('connectionBadge').classList.remove('visible');
+  }
 })();
