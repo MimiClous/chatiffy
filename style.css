@@ -32,6 +32,8 @@ body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: white; }
 #settings input[type=text], #settings input[type=number], #channelInput, #settings select { width: 160px; padding: 7px; border: 1px solid #444; border-radius: 6px; background: #282832; color: white; }
 #settings input[type=range] { width: 150px; } #settings output { min-width: 48px; }
 #settings .check { display: flex; }
+#settings .stack { display: block; }
+#overlayUrlOutput { display: block; width: 100% !important; margin-top: 7px; padding: 8px; border: 1px solid #444; border-radius: 6px; background: #121218; color: #c4b5fd; font-size: 12px; }
 #applyButton { width: 100%; padding: 10px; border: 0; border-radius: 8px; background: #8b5cf6; color: white; font-weight: 700; cursor: pointer; }
 #copyButton { width: 100%; margin-top: 8px; padding: 9px; border: 1px solid #555; border-radius: 8px; background: #292932; color: white; cursor: pointer; }
 .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 14px 0; }

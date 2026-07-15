@@ -13,7 +13,7 @@
     <button id="settingsButton" title="Настройки">⚙</button>
     <aside id="settings" hidden>
       <h1>Chatiffy</h1>
-      <label>Канал Twitch <input id="channelInput" value="zakvielchannel" autocomplete="off"></label>
+      <label>Канал Twitch <input id="channelInput" value="zakvielchannel" autocomplete="off" maxlength="25" pattern="[A-Za-z0-9_]+"></label>
       <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>
       <label>Сообщение видно <input id="lifetimeInput" type="range" min="0" max="120" value="0"><output id="lifetimeOutput">всегда</output></label>
       <label>Максимум сообщений <input id="maxMessagesInput" type="number" min="5" max="30" value="9"></label>
@@ -43,7 +43,8 @@
       </div>
       <button id="applyButton">Применить и подключиться</button>
       <button id="copyButton" type="button">Скопировать ссылку для OBS</button>
-      <p>Для OBS добавьте «Браузер» → «Локальный файл» и выберите этот HTML. Шестерёнка скрывается при захвате.</p>
+      <label class="stack">Готовая OBS-ссылка <input id="overlayUrlOutput" readonly></label>
+      <p>В OBS добавьте источник «Браузер» и вставьте готовую ссылку в поле URL. Рекомендуемый размер: 600 × 900.</p>
       <p id="debug"></p>
     </aside>
   </main>

@@ -1,12 +1,13 @@
 {
   "name": "chatiffy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Customizable Twitch chat overlay for OBS with 7TV emotes and Twitch badges",
   "scripts": {
     "start": "node server.mjs",
-    "check": "node --check app.js && node --check server.mjs"
+    "check": "node --check app.js && node --check server.mjs && node --check test.mjs",
+    "test": "node --test test.mjs"
   },
   "engines": {
     "node": ">=20"

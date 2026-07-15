@@ -1,15 +1,22 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('.', import.meta.url));
+const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '0.0.0.0';
 const twitchClientId = process.env.TWITCH_CLIENT_ID || '';
 const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET || '';
+const apiTimeoutMs = 8000;
+const configuredRateLimit = Number(process.env.API_RATE_LIMIT || 600);
+const apiRateLimit = Number.isFinite(configuredRateLimit) ? Math.min(5000, Math.max(60, configuredRateLimit)) : 600;
+
 let twitchToken = { value: '', expiresAt: 0 };
+let tokenRequest = null;
 const channelCache = new Map();
+const badgeCache = new Map();
+const rateLimits = new Map();
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -17,121 +24,236 @@ const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
-  '.svg': 'image/svg+xml'
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon'
 };
+const publicFiles = new Map([
+  ['/', 'index.html'],
+  ['/overlay', 'index.html'],
+  ['/index.html', 'index.html'],
+  ['/app.js', 'app.js'],
+  ['/style.css', 'style.css']
+]);
 
-async function getTwitchToken() {
-  if (!twitchClientId || !twitchClientSecret) {
-    throw new Error('TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET are not configured');
+async function fetchWithTimeout(url, options = {}, timeoutMs = apiTimeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
   }
-  if (twitchToken.value && Date.now() < twitchToken.expiresAt) return twitchToken.value;
-
-  const query = new URLSearchParams({
-    client_id: twitchClientId,
-    client_secret: twitchClientSecret,
-    grant_type: 'client_credentials'
-  });
-  const response = await fetch(`https://id.twitch.tv/oauth2/token?${query}`, { method: 'POST' });
-  if (!response.ok) throw new Error(`Twitch OAuth returned ${response.status}`);
-  const data = await response.json();
-  twitchToken = {
-    value: data.access_token,
-    expiresAt: Date.now() + Math.max(60, data.expires_in - 300) * 1000
-  };
-  return twitchToken.value;
 }
 
-async function twitchApi(path) {
-  const token = await getTwitchToken();
-  const response = await fetch(`https://api.twitch.tv/helix${path}`, {
+async function requestTwitchToken() {
+  if (!twitchClientId || !twitchClientSecret) {
+    throw new Error('Twitch API credentials are not configured');
+  }
+  if (twitchToken.value && Date.now() < twitchToken.expiresAt) return twitchToken.value;
+  if (tokenRequest) return tokenRequest;
+
+  tokenRequest = (async () => {
+    const query = new URLSearchParams({
+      client_id: twitchClientId,
+      client_secret: twitchClientSecret,
+      grant_type: 'client_credentials'
+    });
+    const response = await fetchWithTimeout(`https://id.twitch.tv/oauth2/token?${query}`, { method: 'POST' });
+    if (!response.ok) throw new Error(`Twitch OAuth returned ${response.status}`);
+    const data = await response.json();
+    twitchToken = {
+      value: data.access_token,
+      expiresAt: Date.now() + Math.max(60, Number(data.expires_in || 3600) - 300) * 1000
+    };
+    return twitchToken.value;
+  })();
+
+  try { return await tokenRequest; }
+  finally { tokenRequest = null; }
+}
+
+async function twitchApi(path, retry = true) {
+  const token = await requestTwitchToken();
+  const response = await fetchWithTimeout(`https://api.twitch.tv/helix${path}`, {
     headers: { 'Client-Id': twitchClientId, Authorization: `Bearer ${token}` }
   });
+  if (response.status === 401 && retry) {
+    twitchToken = { value: '', expiresAt: 0 };
+    return twitchApi(path, false);
+  }
   if (!response.ok) throw new Error(`Twitch Helix returned ${response.status}`);
   return response.json();
 }
 
-function sendJson(response, status, data) {
-  response.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': status === 200 ? 'public, max-age=3600' : 'no-store',
-    'Access-Control-Allow-Origin': '*'
-  });
-  response.end(JSON.stringify(data));
+async function cached(cache, key, ttlMs, loader) {
+  const existing = cache.get(key);
+  if (existing?.value && Date.now() < existing.expiresAt) return existing.value;
+  if (existing?.request) return existing.request;
+
+  const request = loader()
+    .then((value) => {
+      cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+      return value;
+    })
+    .catch((error) => {
+      if (existing?.value) {
+        cache.set(key, { value: existing.value, expiresAt: Date.now() + 60000 });
+        return existing.value; // stale-if-error
+      }
+      cache.delete(key);
+      throw error;
+    });
+  cache.set(key, { ...existing, request });
+  return request;
 }
 
-// Сервер намеренно минимальный: проект не требует npm install и node_modules.
-const server = http.createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+function securityHeaders() {
+  return {
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    // Inline styles are required for sanitized user colors and live CSS variables.
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https: wss://irc-ws.chat.twitch.tv; object-src 'none'; base-uri 'none'; frame-ancestors *"
+  };
+}
 
-    // Twitch credentials stay on the server; OBS receives only public badge URLs.
-    if (url.pathname === '/api/badges') {
-      const channelId = url.searchParams.get('channelId');
-      if (!/^\d+$/.test(channelId || '')) {
-        sendJson(response, 400, { error: 'Valid channelId is required' });
-        return;
-      }
-      const [globalBadges, channelBadges] = await Promise.all([
-        twitchApi('/chat/badges/global'),
-        twitchApi(`/chat/badges?broadcaster_id=${channelId}`)
-      ]);
-      sendJson(response, 200, { global: globalBadges.data, channel: channelBadges.data });
+function sendJson(response, status, data, method = 'GET') {
+  const body = JSON.stringify(data);
+  response.writeHead(status, {
+    ...securityHeaders(),
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': status === 200 ? 'public, max-age=300' : 'no-store',
+    'Access-Control-Allow-Origin': '*'
+  });
+  response.end(method === 'HEAD' ? undefined : body);
+}
+
+function allowApiRequest(request) {
+  const ip = request.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = rateLimits.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    rateLimits.set(ip, { count: 1, resetAt: now + 60000 });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= apiRateLimit;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of channelCache) if (now > value.expiresAt + 86400000) channelCache.delete(key);
+  for (const [key, value] of badgeCache) if (now > (value.expiresAt || 0) + 86400000) badgeCache.delete(key);
+  for (const [key, value] of rateLimits) if (now > value.resetAt) rateLimits.delete(key);
+}, 10 * 60 * 1000).unref();
+
+const server = http.createServer(async (request, response) => {
+  const method = request.method || 'GET';
+  try {
+    if (method !== 'GET' && method !== 'HEAD') {
+      sendJson(response, 405, { error: 'Method not allowed' }, method);
       return;
     }
 
-    // Преобразование логина в Twitch ID для произвольных каналов.
+    const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+    if (url.pathname.startsWith('/api/') && !allowApiRequest(request)) {
+      response.setHeader('Retry-After', '60');
+      sendJson(response, 429, { error: 'Too many requests' }, method);
+      return;
+    }
+
+    if (url.pathname === '/api/badges') {
+      const channelId = url.searchParams.get('channelId');
+      if (!/^\d{1,20}$/.test(channelId || '')) {
+        sendJson(response, 400, { error: 'Valid channelId is required' }, method);
+        return;
+      }
+      const [globalBadges, channelBadges] = await Promise.all([
+        cached(badgeCache, 'global', 60 * 60 * 1000, () => twitchApi('/chat/badges/global')),
+        cached(badgeCache, `channel:${channelId}`, 60 * 60 * 1000, () => twitchApi(`/chat/badges?broadcaster_id=${channelId}`))
+      ]);
+      sendJson(response, 200, { global: globalBadges.data, channel: channelBadges.data }, method);
+      return;
+    }
+
     if (url.pathname === '/api/channel') {
       const login = (url.searchParams.get('login') || '').trim().toLowerCase();
       if (!/^[a-z0-9_]{1,25}$/.test(login)) {
-        sendJson(response, 400, { error: 'Valid Twitch login is required' });
+        sendJson(response, 400, { error: 'Valid Twitch login is required' }, method);
         return;
       }
-      let channel = channelCache.get(login);
-      if (!channel || Date.now() > channel.expiresAt) {
+      const channel = await cached(channelCache, login, 6 * 60 * 60 * 1000, async () => {
         const result = await twitchApi(`/users?login=${encodeURIComponent(login)}`);
         if (!result.data?.[0]) {
-          sendJson(response, 404, { error: 'Twitch channel not found' });
-          return;
+          const error = new Error('Twitch channel not found');
+          error.status = 404;
+          throw error;
         }
-        channel = { ...result.data[0], expiresAt: Date.now() + 6 * 60 * 60 * 1000 };
-        channelCache.set(login, channel);
-      }
-      sendJson(response, 200, { id: channel.id, login: channel.login, displayName: channel.display_name });
+        return result.data[0];
+      });
+      sendJson(response, 200, { id: channel.id, login: channel.login, displayName: channel.display_name }, method);
       return;
     }
 
     if (url.pathname === '/api/health') {
-      sendJson(response, 200, { ok: true, twitchConfigured: Boolean(twitchClientId && twitchClientSecret) });
+      sendJson(response, 200, {
+        ok: true,
+        service: 'Chatiffy',
+        twitchConfigured: Boolean(twitchClientId && twitchClientSecret),
+        uptimeSeconds: Math.round(process.uptime())
+      }, method);
       return;
     }
 
-    const requested = decodeURIComponent((url.pathname === '/' || url.pathname === '/overlay') ? '/index.html' : url.pathname);
-    const safePath = normalize(requested).replace(/^(\.\.[/\\])+/, '');
-    const filePath = join(root, safePath);
-
-    // Запрещаем выход из директории проекта через ../ в URL.
-    if (!filePath.startsWith(root)) {
-      response.writeHead(403).end('Forbidden');
+    const publicFile = publicFiles.get(url.pathname);
+    if (!publicFile) {
+      response.writeHead(404, { ...securityHeaders(), 'Content-Type': 'text/plain; charset=utf-8' }).end(method === 'HEAD' ? undefined : 'Not found');
       return;
     }
+    const filePath = resolve(root, publicFile);
+    if (!filePath.startsWith(`${root}${sep}`)) throw new Error('Invalid public file path');
 
     const body = await readFile(filePath);
     response.writeHead(200, {
+      ...securityHeaders(),
       'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream',
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff'
+      'Content-Length': body.length,
+      'Cache-Control': extname(filePath) === '.html' ? 'no-store' : 'no-cache'
     });
-    response.end(body);
+    response.end(method === 'HEAD' ? undefined : body);
   } catch (error) {
-    if ((request.url || '').startsWith('/api/')) {
-      sendJson(response, 503, { error: error?.message || 'API unavailable' });
+    const isApi = (request.url || '').startsWith('/api/');
+    if (isApi) {
+      const status = Number(error?.status) || 503;
+      sendJson(response, status, { error: error?.message || 'API unavailable' }, method);
       return;
     }
-    response.writeHead(error?.code === 'ENOENT' ? 404 : 500, { 'Content-Type': 'text/plain; charset=utf-8' });
-    response.end(error?.code === 'ENOENT' ? 'Not found' : 'Server error');
+    const status = error?.code === 'ENOENT' || error?.code === 'EISDIR' ? 404 : 500;
+    response.writeHead(status, { ...securityHeaders(), 'Content-Type': 'text/plain; charset=utf-8' });
+    response.end(method === 'HEAD' ? undefined : (status === 404 ? 'Not found' : 'Server error'));
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Chatiffy: http://${host}:${port}`);
+server.requestTimeout = 15000;
+server.headersTimeout = 10000;
+server.keepAliveTimeout = 5000;
+server.maxHeadersCount = 100;
+
+server.on('clientError', (_, socket) => {
+  if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
 });
+
+server.listen(port, host, () => {
+  console.log(`Chatiffy listening on http://${host}:${port}`);
+});
+
+function shutdown(signal) {
+  console.log(`${signal}: shutting down Chatiffy`);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
