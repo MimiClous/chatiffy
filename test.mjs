@@ -48,7 +48,7 @@ test('health endpoint reports service state without exposing secrets', async () 
 });
 
 test('editor and overlay routes serve Chatiffy', async () => {
-  for (const path of ['/', '/overlay?channel=zakvielchannel&lifetime=0']) {
+  for (const path of ['/', '/overlay?channel=mimiclous&lifetime=0']) {
     const response = await fetch(`${origin}${path}`);
     assert.equal(response.status, 200);
     assert.match(await response.text(), /Chatiffy/);

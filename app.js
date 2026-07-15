@@ -30,9 +30,9 @@
   };
   const settingsVersion = 6;
   const hasCurrentSettings = Number(stored('settingsVersion')) >= settingsVersion;
-  const rawChannel = (params.get('channel') || stored('channel') || 'zakvielchannel').toLowerCase().replace(/^#/, '');
+  const rawChannel = (params.get('channel') || stored('channel') || 'mimiclous').toLowerCase().replace(/^#/, '');
   const config = {
-    channel: /^[a-z0-9_]{1,25}$/.test(rawChannel) ? rawChannel : 'zakvielchannel',
+    channel: /^[a-z0-9_]{1,25}$/.test(rawChannel) ? rawChannel : 'mimiclous',
     fontSize: numberSetting('size', 'fontSize', 28, 16, 48),
     lifetime: numberSetting('lifetime', 'lifetime', 0, 0, 120),
     maxMessages: numberSetting('max', 'maxMessages', 9, 5, 30),

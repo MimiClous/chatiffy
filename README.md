@@ -82,7 +82,7 @@ docker-compose up -d --build
 Пример:
 
 ```text
-http://SERVER:8080/overlay?instance=chat-abc123&channel=zakvielchannel&size=28&lifetime=0&max=9&background=0&theme=glass&align=left&text=%23ffffff&panel=32&vignette=55&radius=24
+http://SERVER:8080/overlay?instance=chat-abc123&channel=mimiclous&size=28&lifetime=0&max=9&background=0&theme=glass&align=left&text=%23ffffff&panel=32&vignette=55&radius=24
 ```
 
 - `channel` — Twitch-логин канала;
