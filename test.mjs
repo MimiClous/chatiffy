@@ -104,4 +104,6 @@ test('client DOM bindings and Compose service stay consistent', async () => {
   assert.deepEqual([...references].filter((id) => !ids.has(id)), []);
   assert.match(compose, /^services:\s*$/m);
   assert.match(compose, /^  zakvielchat:\s*$/m);
+  assert.match(compose, /127\.0\.0\.1:\$\{APP_PORT:-8080\}:8080/);
+  assert.match(compose, /headers:\{Host:h\}/);
 });

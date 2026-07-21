@@ -36,7 +36,7 @@ nano .env
 ```dotenv
 TWITCH_CLIENT_ID=ваш_client_id
 TWITCH_CLIENT_SECRET=ваш_client_secret
-ALLOWED_HOSTS=chat.example.com,www.chat.example.com,127.0.0.1,localhost
+ALLOWED_HOSTS=chat.example.com
 APP_PORT=8080
 ```
 
