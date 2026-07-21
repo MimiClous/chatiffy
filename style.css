@@ -14,6 +14,7 @@ body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: white; }
 .message.removing { animation: leave .35s ease-in forwards; }
 .badges { display: inline-flex; align-items: center; gap: .15em; margin-right: .28em; vertical-align: -.14em; }
 .badge { display: block; width: 1em; height: 1em; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+.badge-7tv { width: 1.08em; height: 1.08em; }
 .author { font-weight: 800; margin-right: .3em; }
 .emote { display: inline-block; height: 1.45em; width: auto; max-width: 4.5em; vertical-align: -.34em; object-fit: contain; margin: 0 .04em; filter: drop-shadow(0 1px 1px rgba(0,0,0,.65)); }
 #connectionBadge { position: absolute; z-index: 30; left: 50%; top: 50%; display: flex; align-items: center; gap: 12px; min-width: 190px; justify-content: center; padding: 12px 18px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: linear-gradient(120deg, rgba(14,14,22,.9), rgba(38,31,58,.82)); box-shadow: 0 12px 38px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.08); backdrop-filter: blur(10px); color: #eee; font-size: 14px; font-weight: 650; letter-spacing: .01em; opacity: 0; translate: -50% calc(-50% + 10px); scale: .96; transition: opacity .3s, translate .3s, scale .3s; pointer-events: none; }

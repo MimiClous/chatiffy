@@ -25,6 +25,7 @@ let twitchToken = { value: '', expiresAt: 0 };
 let tokenRequest = null;
 const channelCache = new Map();
 const badgeCache = new Map();
+const cosmeticCache = new Map();
 const rateLimits = new Map();
 
 const contentTypes = {
@@ -94,6 +95,57 @@ async function twitchApi(path, retry = true) {
   return response.json();
 }
 
+async function sevenTvCosmetics(userId, login) {
+  const userQuery = `query ChatiffyUser($query: String!) {
+    users(query: $query, limit: 10) {
+      style { color paint_id badge_id }
+      connections { id platform username }
+    }
+  }`;
+  const userResponse = await fetchWithTimeout('https://7tv.io/v3/gql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: userQuery, variables: { query: login } })
+  });
+  if (!userResponse.ok) throw new Error(`7TV user API returned ${userResponse.status}`);
+  const userResult = await userResponse.json();
+  if (userResult.errors?.length) throw new Error('7TV user API returned an error');
+  const user = userResult.data?.users?.find((candidate) => candidate.connections?.some(
+    (connection) => connection.platform === 'TWITCH' && connection.id === userId
+  ));
+  if (!user) return { color: null, badge: null, paint: null };
+  const style = user.style || {};
+  const color = Number.isInteger(style.color) && style.color !== 0 ? style.color : null;
+  const ids = [style.badge_id, style.paint_id].filter((id) => /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(id || ''));
+  if (!ids.length) {
+    return { color, badge: null, paint: null };
+  }
+
+  const query = `query ChatiffyCosmetics($list: [ObjectID!]) {
+    cosmetics(list: $list) {
+      paints { id kind name function color angle shape image_url repeat stops { at color } shadows { x_offset y_offset radius color } }
+      badges { id kind name tooltip tag }
+    }
+  }`;
+  const cosmeticResponse = await fetchWithTimeout('https://7tv.io/v3/gql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables: { list: ids } })
+  });
+  if (!cosmeticResponse.ok) throw new Error(`7TV cosmetics API returned ${cosmeticResponse.status}`);
+  const result = await cosmeticResponse.json();
+  if (result.errors?.length) throw new Error('7TV cosmetics API returned an error');
+  const cosmetics = result.data?.cosmetics || {};
+  const badge = cosmetics.badges?.find((item) => item.id === style.badge_id) || null;
+  const paint = cosmetics.paints?.find((item) => item.id === style.paint_id) || null;
+
+  return {
+    color,
+    badge: badge ? { ...badge, url: `https://cdn.7tv.app/badge/${badge.id}/2x.webp` } : null,
+    paint
+  };
+}
+
 async function cached(cache, key, ttlMs, loader) {
   const existing = cache.get(key);
   if (existing?.value && Date.now() < existing.expiresAt) return existing.value;
@@ -155,6 +207,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [key, value] of channelCache) if (now > value.expiresAt + 86400000) channelCache.delete(key);
   for (const [key, value] of badgeCache) if (now > (value.expiresAt || 0) + 86400000) badgeCache.delete(key);
+  for (const [key, value] of cosmeticCache) if (now > (value.expiresAt || 0) + 86400000) cosmeticCache.delete(key);
   for (const [key, value] of rateLimits) if (now > value.resetAt) rateLimits.delete(key);
 }, 10 * 60 * 1000).unref();
 
@@ -216,6 +269,18 @@ const server = http.createServer(async (request, response) => {
         return result.data[0];
       });
       sendJson(response, 200, { id: channel.id, login: channel.login, displayName: channel.display_name }, method);
+      return;
+    }
+
+    if (url.pathname === '/api/7tv-cosmetics') {
+      const userId = url.searchParams.get('userId');
+      const login = (url.searchParams.get('login') || '').trim().toLowerCase();
+      if (!/^\d{1,20}$/.test(userId || '') || !/^[a-z0-9_]{1,25}$/.test(login)) {
+        sendJson(response, 400, { error: 'Valid Twitch userId and login are required' }, method);
+        return;
+      }
+      const cosmetics = await cached(cosmeticCache, userId, 6 * 60 * 60 * 1000, () => sevenTvCosmetics(userId, login));
+      sendJson(response, 200, cosmetics, method);
       return;
     }
 

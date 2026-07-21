@@ -53,6 +53,7 @@
   let assetGeneration = 0;
   let emotes7tv = new Map();
   let twitchBadges = new Map();
+  const cosmetics7tv = new Map();
   const seenMessageIds = new Set();
 
   function setStatus(text, error = false) {
@@ -278,6 +279,86 @@
     if (wrap.childElementCount) container.append(wrap);
   }
 
+  function rgba7tv(value) {
+    if (!Number.isInteger(value)) return '';
+    return `rgba(${(value >>> 24) & 255}, ${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${((value & 255) / 255).toFixed(3)})`;
+  }
+
+  function paint7tvAuthor(author, paint, fallbackColor) {
+    if (!paint) {
+      if (fallbackColor) author.style.color = fallbackColor;
+      return;
+    }
+    const kind = String(paint.function || '').toUpperCase().replaceAll('-', '_');
+    const stops = Array.isArray(paint.stops)
+      ? paint.stops.filter((stop) => Number.isFinite(stop.at) && Number.isInteger(stop.color))
+        .map((stop) => `${rgba7tv(stop.color)} ${Math.max(0, Math.min(100, stop.at * 100))}%`)
+      : [];
+    let background = '';
+    if ((kind === 'LINEAR_GRADIENT' || kind === 'RADIAL_GRADIENT') && stops.length) {
+      const repeat = paint.repeat ? 'repeating-' : '';
+      const prefix = kind === 'LINEAR_GRADIENT' ? `${Number(paint.angle) || 0}deg, ` : `${paint.shape === 'ellipse' ? 'ellipse' : 'circle'}, `;
+      background = `${repeat}${kind === 'LINEAR_GRADIENT' ? 'linear' : 'radial'}-gradient(${prefix}${stops.join(', ')})`;
+    } else if (kind === 'URL' && /^https:\/\/cdn\.7tv\.app\//.test(paint.image_url || '')) {
+      background = `url("${paint.image_url}")`;
+    }
+    const solid = rgba7tv(paint.color) || fallbackColor;
+    if (background) {
+      author.style.backgroundImage = background;
+      author.style.backgroundPosition = 'center';
+      author.style.backgroundSize = 'cover';
+      author.style.backgroundClip = 'text';
+      author.style.webkitBackgroundClip = 'text';
+      author.style.color = 'transparent';
+    } else if (solid) {
+      author.style.color = solid;
+    }
+    const shadows = Array.isArray(paint.shadows) ? paint.shadows.slice(0, 8) : [];
+    const filters = shadows.map((shadow) => {
+      const x = Math.max(-20, Math.min(20, Number(shadow.x_offset) || 0));
+      const y = Math.max(-20, Math.min(20, Number(shadow.y_offset) || 0));
+      const radius = Math.max(0, Math.min(20, Number(shadow.radius) || 0));
+      const color = rgba7tv(shadow.color);
+      return color ? `drop-shadow(${x}px ${y}px ${radius}px ${color})` : '';
+    }).filter(Boolean);
+    if (filters.length) author.style.filter = filters.join(' ');
+  }
+
+  function load7tvCosmetics(userId, login) {
+    if (!cosmetics7tv.has(userId)) {
+      const query = new URLSearchParams({ userId, login });
+      const request = fetchWithTimeout(`/api/7tv-cosmetics?${query}`, {}, 9000)
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null);
+      cosmetics7tv.set(userId, request);
+    }
+    return cosmetics7tv.get(userId);
+  }
+
+  async function render7tvCosmetics(row, author, userId, login) {
+    if (!userId) return;
+    const cosmetic = await load7tvCosmetics(userId, login);
+    if (!cosmetic || !row.isConnected) return;
+    paint7tvAuthor(author, cosmetic.paint, rgba7tv(cosmetic.color));
+    if (!cosmetic.badge?.url) return;
+    let wrap = row.querySelector('.badges');
+    if (!wrap) {
+      wrap = document.createElement('span');
+      wrap.className = 'badges';
+      row.insertBefore(wrap, author);
+    }
+    if (wrap.querySelector(`[data-7tv-badge="${cosmetic.badge.id}"]`)) return;
+    const badge = document.createElement('img');
+    badge.className = 'badge badge-7tv';
+    badge.setAttribute('data-7tv-badge', cosmetic.badge.id);
+    badge.src = cosmetic.badge.url;
+    badge.alt = cosmetic.badge.tooltip || cosmetic.badge.name || '7TV badge';
+    badge.title = badge.alt;
+    badge.decoding = 'async';
+    badge.onerror = () => badge.remove();
+    wrap.append(badge);
+  }
+
   function renderContent(container, text, twitchTag) {
     const chars = Array.from(text);
     const ranges = twitchEmoteRanges(twitchTag);
@@ -323,6 +404,7 @@
     row.append(author, document.createTextNode(' '));
     renderContent(row, message.text, message.tags.emotes);
     chat.append(row);
+    render7tvCosmetics(row, author, row.dataset.userId, message.user);
     while (chat.children.length > config.maxMessages) chat.firstElementChild.remove();
     if (config.lifetime > 0) setTimeout(() => removeMessage(row), config.lifetime * 1000);
   }

@@ -83,6 +83,7 @@ test('only explicitly public assets can be downloaded', async () => {
 test('API validates inputs and methods before contacting Twitch', async () => {
   assert.equal((await fetch(`${origin}/api/channel?login=bad-name!`)).status, 400);
   assert.equal((await fetch(`${origin}/api/badges?channelId=oops`)).status, 400);
+  assert.equal((await fetch(`${origin}/api/7tv-cosmetics?userId=oops&login=bad-name!`)).status, 400);
   assert.equal((await fetch(`${origin}/api/health`, { method: 'POST' })).status, 405);
 });
 
