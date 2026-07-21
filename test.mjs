@@ -2,10 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { request } from 'node:http';
 
 const port = 19000 + Math.floor(Math.random() * 1000);
 const origin = `http://127.0.0.1:${port}`;
 let child;
+
+function requestWithHost(hostHeader) {
+  return new Promise((resolve, reject) => {
+    const req = request(origin, { path: '/api/health', headers: { Host: hostHeader } }, (response) => {
+      response.resume();
+      response.on('end', () => resolve(response.statusCode));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
 
 async function waitForServer() {
   for (let attempt = 0; attempt < 50; attempt += 1) {
@@ -21,7 +33,7 @@ async function waitForServer() {
 test.before(async () => {
   child = spawn(process.execPath, ['server.mjs'], {
     cwd: new URL('.', import.meta.url),
-    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), TWITCH_CLIENT_ID: '', TWITCH_CLIENT_SECRET: '' },
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), ALLOWED_HOSTS: '127.0.0.1,localhost', TWITCH_CLIENT_ID: '', TWITCH_CLIENT_SECRET: '' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   await waitForServer();
@@ -53,6 +65,11 @@ test('editor and overlay routes serve Chatiffy', async () => {
     assert.equal(response.status, 200);
     assert.match(await response.text(), /Chatiffy/);
   }
+});
+
+test('host allowlist comes from ALLOWED_HOSTS', async () => {
+  assert.equal(await requestWithHost('unknown.example'), 403);
+  assert.equal(await requestWithHost(`localhost:${port}`), 200);
 });
 
 test('only explicitly public assets can be downloaded', async () => {

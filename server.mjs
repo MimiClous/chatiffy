@@ -8,6 +8,15 @@ const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '0.0.0.0';
 const twitchClientId = process.env.TWITCH_CLIENT_ID || '';
 const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET || '';
+const allowedHosts = new Set(
+  (process.env.ALLOWED_HOSTS || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+);
+if (allowedHosts.size === 0) {
+  console.warn('ALLOWED_HOSTS is empty; all HTTP requests will be rejected');
+}
 const apiTimeoutMs = 8000;
 const configuredRateLimit = Number(process.env.API_RATE_LIMIT || 600);
 const apiRateLimit = Number.isFinite(configuredRateLimit) ? Math.min(5000, Math.max(60, configuredRateLimit)) : 600;
@@ -151,6 +160,19 @@ setInterval(() => {
 
 const server = http.createServer(async (request, response) => {
   const method = request.method || 'GET';
+  const rawHost = (request.headers.host || '').toLowerCase();
+  const hostHeader = rawHost.startsWith('[')
+    ? rawHost.slice(1, rawHost.indexOf(']'))
+    : rawHost.split(':', 1)[0];
+  if (!hostHeader || !allowedHosts.has(hostHeader)) {
+    response.writeHead(403, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      ...securityHeaders()
+    });
+    response.end('Access denied: host is not allowed');
+    return;
+  }
+
   try {
     if (method !== 'GET' && method !== 'HEAD') {
       sendJson(response, 405, { error: 'Method not allowed' }, method);

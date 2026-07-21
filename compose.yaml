@@ -18,6 +18,7 @@ services:
       PORT: "8080"
       TWITCH_CLIENT_ID: "${TWITCH_CLIENT_ID}"
       TWITCH_CLIENT_SECRET: "${TWITCH_CLIENT_SECRET}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
       API_RATE_LIMIT: "${API_RATE_LIMIT:-600}"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
