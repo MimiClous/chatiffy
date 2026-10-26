@@ -334,6 +334,7 @@ server.on('clientError', (_, socket) => {
 
 server.listen(port, host, () => {
   console.log(`Chatiffy listening on http://${host}:${port}`);
+  if (process.env.CHATIFFY_DESKTOP === '1') console.log('CHATIFFY_READY');
 });
 
 function shutdown(signal) {
@@ -344,3 +345,15 @@ function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// The desktop owner keeps stdin open. Closing it also shuts down the server.
+if (process.env.CHATIFFY_DESKTOP === '1') {
+  process.stdin.setEncoding('utf8');
+  let input = '';
+  process.stdin.on('data', (chunk) => {
+    input = (input + chunk).slice(-128);
+    if (input.includes('shutdown\n')) shutdown('desktop');
+  });
+  process.stdin.on('end', () => shutdown('desktop disconnected'));
+  process.stdin.resume();
+}

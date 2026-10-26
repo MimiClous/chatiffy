@@ -6,3 +6,6 @@
 *.zip
 node_modules
 npm-debug.log
+dist
+windows
+scripts

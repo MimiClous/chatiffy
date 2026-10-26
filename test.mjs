@@ -108,3 +108,37 @@ test('client DOM bindings and Compose service stay consistent', async () => {
   assert.match(compose, /127\.0\.0\.1:\$\{APP_PORT:-8080\}:8080/);
   assert.match(compose, /headers:\{Host:h\}/);
 });
+
+test('desktop server shuts down when its owner sends shutdown or disconnects', async () => {
+  for (const disconnect of [false, true]) {
+    const desktop = spawn(process.execPath, ['server.mjs'], {
+      cwd: new URL('.', import.meta.url),
+      env: { ...process.env, HOST: '127.0.0.1', PORT: '0', ALLOWED_HOSTS: '127.0.0.1', CHATIFFY_DESKTOP: '1' },
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    let timer;
+    try {
+      await new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Desktop server startup timed out')), 5000);
+        desktop.once('error', reject);
+        desktop.once('exit', () => reject(new Error('Desktop server exited before readiness')));
+        let output = '';
+        desktop.stdout.on('data', (chunk) => {
+          output += chunk;
+          if (output.includes('CHATIFFY_READY')) resolve();
+        });
+      });
+      clearTimeout(timer);
+      const exited = new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Desktop server shutdown timed out')), 5000);
+        desktop.once('exit', (code) => resolve(code));
+      });
+      if (disconnect) desktop.stdin.end();
+      else desktop.stdin.write('shutdown\n');
+      assert.equal(await exited, 0);
+    } finally {
+      clearTimeout(timer);
+      if (desktop.exitCode === null) desktop.kill();
+    }
+  }
+});
