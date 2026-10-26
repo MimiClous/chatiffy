@@ -12,7 +12,9 @@
 **Код может содержать ошибки, баги и неточности. Проверяйте перед использованием.**
 
 </div>
-
+<div align="center">
+  <img src="https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif" width="400" alt="AI warning" />
+</div>
 ---
 
 Отказоустойчивый Twitch-чат для OBS с нативными Twitch-эмоутами, глобальными и
