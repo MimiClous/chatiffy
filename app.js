@@ -37,12 +37,12 @@
     lifetime: numberSetting('lifetime', 'lifetime', 0, 0, 120),
     maxMessages: numberSetting('max', 'maxMessages', 9, 5, 30),
     background: (params.get('background') || (hasCurrentSettings && stored('background')) || '0') !== '0',
-    theme: enumSetting('theme', 'theme', 'glass', ['glass', 'clean', 'neon']),
+    theme: enumSetting('theme', 'theme', 'pixel', ['pixel', 'glass', 'clean', 'neon']),
     align: enumSetting('align', 'align', 'left', ['left', 'right']),
     textColor: /^#[0-9a-f]{6}$/i.test(params.get('text') || stored('textColor') || '') ? (params.get('text') || stored('textColor')) : '#ffffff',
     panelOpacity: numberSetting('panel', 'panelOpacity', 32, 0, 80),
     vignette: numberSetting('vignette', 'vignette', 55, 0, 100),
-    radius: numberSetting('radius', 'radius', 24, 0, 40)
+    radius: numberSetting('radius', 'radius', 0, 0, 40)
   };
   let socket;
   let reconnectTimer;
@@ -90,7 +90,7 @@
     document.documentElement.style.setProperty('--panel-radius', `${config.radius}px`);
     chat.classList.toggle('with-background', config.background);
     chat.classList.toggle('align-right', config.align === 'right');
-    chat.classList.remove('theme-glass', 'theme-clean', 'theme-neon');
+    chat.classList.remove('theme-pixel', 'theme-glass', 'theme-clean', 'theme-neon');
     chat.classList.add(`theme-${config.theme}`);
     if ($('overlayUrlOutput')) $('overlayUrlOutput').value = createOverlayUrl();
     updateScale();
@@ -610,6 +610,7 @@
   });
 
   const presets = {
+    pixel: { fontSize: 28, panelOpacity: 32, vignette: 0, radius: 0, background: true, theme: 'pixel' },
     soft: { fontSize: 28, panelOpacity: 32, vignette: 55, radius: 24, background: false, theme: 'glass' },
     compact: { fontSize: 22, panelOpacity: 45, vignette: 35, radius: 12, background: false, theme: 'clean' },
     neon: { fontSize: 28, panelOpacity: 28, vignette: 72, radius: 26, background: true, theme: 'neon' },

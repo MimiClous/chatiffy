@@ -29,7 +29,7 @@ try {
     $launcher = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru
     Wait-Until { (Health).ok -eq $true } 'Packaged server did not become healthy.'
     Assert ((Health).service -eq 'Chatiffy') 'Wrong service.'
-    foreach ($path in @('/', '/overlay', '/app.js', '/style.css')) {
+    foreach ($path in @('/', '/overlay', '/app.js', '/style.css', '/favicon.ico', '/assets/chatiffy.svg')) {
         $response = Invoke-WebRequest "http://127.0.0.1:8080$path" -UseBasicParsing
         Assert ($response.StatusCode -eq 200) "Asset failed: $path"
     }

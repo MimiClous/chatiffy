@@ -12,13 +12,14 @@ $out = Join-Path $root "dist\Chatiffy-$version-windows-x64"
 if (Test-Path $out) { throw "Build directory already exists: $out. Move it aside before rebuilding." }
 New-Item -ItemType Directory -Force "$out\runtime", "$out\app" | Out-Null
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ /utf8output "/out:$out\Chatiffy.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll (Join-Path $root 'windows\Chatiffy.cs')
+& $compiler /nologo /target:winexe /platform:x64 /optimize+ /utf8output "/win32icon:$root\assets\chatiffy.ico" "/resource:$root\assets\chatiffy.ico,Chatiffy.Icon" "/out:$out\Chatiffy.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll (Join-Path $root 'windows\Chatiffy.cs')
 if ($LASTEXITCODE -ne 0) { throw 'C# compilation failed.' }
 Copy-Item -LiteralPath $NodePath -Destination "$out\runtime\node.exe"
 foreach ($name in @('server.mjs', 'index.html', 'app.js', 'style.css')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination "$out\app\$name"
 }
 # Node redistributions must include the runtime's third-party license notices.
+Copy-Item -LiteralPath (Join-Path $root 'assets') -Destination "$out\app\assets" -Recurse
 Copy-Item -LiteralPath $license -Destination "$out\runtime\LICENSE"
 Copy-Item -LiteralPath (Join-Path $root 'windows\README.txt') -Destination "$out\README.txt"
 "Chatiffy $version`r`nNode.js $nodeVersion x64`r`n" | Set-Content "$out\VERSION.txt"

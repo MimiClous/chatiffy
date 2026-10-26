@@ -38,6 +38,8 @@ const contentTypes = {
   '.ico': 'image/x-icon'
 };
 const publicFiles = new Map([
+  ['/assets/chatiffy.svg', 'assets/chatiffy.svg'],
+  ['/favicon.ico', 'assets/chatiffy.ico'],
   ['/', 'index.html'],
   ['/overlay', 'index.html'],
   ['/index.html', 'index.html'],

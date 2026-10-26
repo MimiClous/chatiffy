@@ -75,6 +75,14 @@ test('host allowlist comes from ALLOWED_HOSTS', async () => {
 test('only explicitly public assets can be downloaded', async () => {
   assert.equal((await fetch(`${origin}/app.js`)).status, 200);
   assert.equal((await fetch(`${origin}/style.css`)).status, 200);
+  const icon = await fetch(`${origin}/favicon.ico`);
+  assert.equal(icon.status, 200);
+  assert.match(icon.headers.get('content-type'), /image\/x-icon/);
+  assert.deepEqual([...new Uint8Array(await icon.arrayBuffer()).slice(0, 6)], [0, 0, 1, 0, 5, 0]);
+  const logo = await fetch(`${origin}/assets/chatiffy.svg`);
+  assert.equal(logo.status, 200);
+  assert.match(logo.headers.get('content-type'), /image\/svg\+xml/);
+  assert.equal((await fetch(`${origin}/assets/../scripts/generate-icons.mjs`)).status, 404);
   assert.equal((await fetch(`${origin}/.env`)).status, 404);
   assert.equal((await fetch(`${origin}/server.mjs`)).status, 404);
   assert.equal((await fetch(`${origin}/package.json`)).status, 404);

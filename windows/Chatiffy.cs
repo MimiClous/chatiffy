@@ -68,6 +68,7 @@ internal static class Program
 internal sealed class TrayContext : ApplicationContext
 {
     private readonly NotifyIcon tray;
+    private readonly Icon appIcon;
     private readonly Control dispatcher = new Control();
     private readonly ToolStripMenuItem status = new ToolStripMenuItem("Запускается…");
     private readonly ToolStripMenuItem open = new ToolStripMenuItem("Открыть редактор");
@@ -85,6 +86,12 @@ internal sealed class TrayContext : ApplicationContext
         open.Enabled = false;
         open.Click += delegate { Open(Program.Url); };
         var menu = new ContextMenuStrip();
+        menu.Renderer = new ToolStripProfessionalRenderer(new PixelColors());
+        menu.BackColor = Color.FromArgb(29, 25, 41);
+        menu.ForeColor = Color.FromArgb(244, 240, 255);
+        menu.Font = new Font("Consolas", 10);
+        menu.ShowImageMargin = false;
+        menu.ShowCheckMargin = false;
         menu.Items.Add(status);
         menu.Items.Add(open);
         menu.Items.Add("Настройки Twitch", null, delegate { Open(Program.Config); });
@@ -92,7 +99,9 @@ internal sealed class TrayContext : ApplicationContext
         menu.Items.Add("Перезапустить сервер", null, delegate { StopServer(); StartServer(); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Выход", null, delegate { ExitThread(); });
-        tray = new NotifyIcon { Icon = SystemIcons.Application, Text = "Chatiffy — запуск", ContextMenuStrip = menu, Visible = true };
+        using (var stream = typeof(Program).Assembly.GetManifestResourceStream("Chatiffy.Icon"))
+        using (var source = new Icon(stream, SystemInformation.SmallIconSize)) appIcon = (Icon)source.Clone();
+        tray = new NotifyIcon { Icon = appIcon, Text = "Chatiffy — запуск", ContextMenuStrip = menu, Visible = true };
         tray.DoubleClick += delegate { if (ready) Open(Program.Url); };
         startup.Interval = 15000;
         startup.Tick += delegate { startup.Stop(); StopServer(); Failure("Сервер не запустился за 15 секунд. См. журнал."); };
@@ -197,9 +206,21 @@ internal sealed class TrayContext : ApplicationContext
         stopWait.Unregister(null);
         tray.Visible = false;
         StopServer();
-        tray.ContextMenuStrip.Dispose(); tray.Dispose(); startup.Dispose(); dispatcher.Dispose();
+        var menuFont = tray.ContextMenuStrip.Font;
+        tray.ContextMenuStrip.Dispose(); menuFont.Dispose(); tray.Dispose(); appIcon.Dispose(); startup.Dispose(); dispatcher.Dispose();
         base.ExitThreadCore();
     }
+}
+
+internal sealed class PixelColors : ProfessionalColorTable
+{
+    public PixelColors() { UseSystemColors = false; }
+    public override Color ToolStripDropDownBackground { get { return Color.FromArgb(29, 25, 41); } }
+    public override Color MenuBorder { get { return Color.FromArgb(167, 139, 250); } }
+    public override Color MenuItemBorder { get { return Color.FromArgb(101, 224, 188); } }
+    public override Color MenuItemSelected { get { return Color.FromArgb(65, 50, 83); } }
+    public override Color SeparatorDark { get { return Color.FromArgb(59, 50, 79); } }
+    public override Color SeparatorLight { get { return Color.FromArgb(59, 50, 79); } }
 }
 
 // Windows kills the server if its tray owner crashes or is terminated.

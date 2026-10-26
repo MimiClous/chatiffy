@@ -51,3 +51,73 @@ body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: white; }
 @keyframes breathe { 50% { scale: .55; opacity: .55; } }
 @media (max-width: 420px) { .message { max-width: 100%; } #settings { padding: 15px; } }
 @media (hover: none) { #settingsButton { opacity: .2; } }
+
+/* Pixel identity: ink / lavender / mint, integer edges and hard shadows. */
+:root { --ink: #14121c; --surface: #1d1929; --edge: #3b324f; --lavender: #a78bfa; --mint: #65e0bc; --paper: #f4f0ff; }
+body { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; }
+button, input, select { font: inherit; }
+.editor-mode #settings { padding: 40px 28px; background: var(--ink); background-image: radial-gradient(#30283f 1px, transparent 1px); background-size: 16px 16px; color: var(--paper); }
+.editor-shell { max-width: 960px; margin: auto; }
+.brand { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid var(--edge); padding-bottom: 24px; }
+.brand img { image-rendering: pixelated; flex: none; }
+.eyebrow, .edition { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--mint); }
+#settings h1 { margin: 4px 0 0; font-size: 36px; line-height: 1; letter-spacing: -2px; font-weight: 900; text-shadow: 3px 3px #514071; }
+.brand-dot { color: var(--mint); }
+.edition { margin-left: auto; padding: 8px; border: 1px solid var(--edge); color: var(--lavender); white-space: nowrap; }
+#settings .intro { margin: 28px 0; font-size: 23px; font-weight: 700; color: var(--paper); line-height: 1.5; }
+#settings .intro span { font-size: 13px; font-weight: 400; color: #b5abc7; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; align-items: start; }
+.settings-card { min-width: 0; padding: 22px; background: var(--surface); border: 2px solid var(--edge); box-shadow: 5px 5px 0 #0b0910; }
+.settings-card:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
+.export-card { grid-column: 1; }
+#settings h2 { font-size: 14px; line-height: 1.5; margin: 0 0 24px; color: var(--paper); }
+#settings h2 span { color: var(--mint); margin-right: 8px; font-size: 11px; }
+#settings label { grid-template-columns: minmax(0, 1fr) auto; font-size: 12px; gap: 9px; margin: 18px 0; color: #d3c9e3; }
+#settings label:has(input[type=range]) { grid-template-columns: minmax(0, 1fr) 64px; }
+#settings input[type=range] { grid-column: 1; grid-row: 2; width: 100%; height: 16px; margin: 0; appearance: none; background: transparent; cursor: pointer; }
+#settings output { grid-column: 2; grid-row: 2; color: var(--mint); font-size: 11px; text-align: right; }
+#settings input[type=range]::-webkit-slider-runnable-track { height: 4px; background: #493d60; }
+#settings input[type=range]::-webkit-slider-thumb { appearance: none; width: 12px; height: 16px; margin-top: -6px; background: var(--lavender); border: 2px solid var(--paper); border-radius: 0; }
+#settings input[type=range]::-moz-range-track { height: 4px; background: #493d60; }
+#settings input[type=range]::-moz-range-thumb { width: 10px; height: 14px; background: var(--lavender); border: 2px solid var(--paper); border-radius: 0; }
+#settings input[type=text], #settings input[type=number], #channelInput, #settings select, #overlayUrlOutput { min-width: 0; width: 145px; max-width: 100%; padding: 9px; border: 2px solid var(--edge); border-radius: 0; background: var(--ink); color: var(--paper); }
+#settings input[type=color] { border: 2px solid var(--edge); border-radius: 0; background: var(--ink); width: 48px; height: 32px; padding: 3px; }
+#settings input[type=checkbox] { accent-color: var(--lavender); width: 16px; height: 16px; flex: none; }
+#settings :is(button, input, select):focus-visible { outline: 2px solid var(--mint); outline-offset: 4px; }
+#settings button { border-radius: 0; min-height: 38px; line-height: 1.4; transition: background .12s; }
+#applyButton { border: 2px solid #c8b5ff; background: var(--lavender); color: var(--ink); box-shadow: 3px 3px 0 #08060d; }
+#copyButton { border: 2px solid var(--mint); background: #203930; color: #c1ffeb; margin-top: 12px; }
+#settings button:hover { background: #413253; color: var(--paper); }
+#settings button:active { translate: 1px 1px; }
+.presets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.presets button { border: 2px solid var(--edge); background: var(--ink); font-size: 11px; }
+.presets button:first-child { border-color: var(--lavender); color: #d9cbff; }
+#settings p { color: #b5abc7; font-size: 11px; line-height: 1.7; }
+#overlayUrlOutput { width: 100%; font-size: 11px; color: var(--mint); }
+#debug:empty { display: none; }
+.editor-footer { display: flex; align-items: center; gap: 9px; margin: 28px 0 4px; font-size: 10px; color: #b5abc7; line-height: 1.6; }
+.editor-footer > span:last-child { margin-left: auto; color: #a192b6; }
+.pixel-led { width: 6px; height: 6px; background: var(--mint); flex: none; }
+#connectionBadge { border: 2px solid var(--edge); border-radius: 0; background: var(--ink); box-shadow: 4px 4px 0 #08060d; backdrop-filter: none; }
+.loader, .loader i { border-radius: 0; box-shadow: none; }
+.loader { border-color: var(--edge); border-top-color: var(--mint); animation: spin 1.6s steps(4) infinite; }
+.loader i { background: var(--lavender); animation: none; }
+#chat.theme-pixel::before { background: rgb(20 18 28 / var(--panel-opacity)); backdrop-filter: none; }
+.theme-pixel .message { border-radius: 0; text-shadow: 2px 2px #14121c; animation-timing-function: steps(4); }
+.with-background.theme-pixel .message { background: #1d1929ed; border: 2px solid #a78bfa; border-left: 4px solid #65e0bc; box-shadow: 4px 4px 0 #0b0910; padding: .25em .4em; }
+@media (max-width: 720px) {
+  .settings-grid { grid-template-columns: 1fr; }
+  .settings-card:nth-child(2), .export-card { grid-column: auto; grid-row: auto; }
+  .editor-mode #settings { padding: 24px 18px; }
+  .edition { display: none; }
+  .editor-footer > span:last-child { display: none; }
+}
+@media (max-width: 360px) {
+  .settings-card { padding: 14px; }
+  #settings label { grid-template-columns: minmax(0, 1fr); }
+  #settings input:not([type=checkbox]), #settings select { width: 100%; }
+  #settings h1 { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
