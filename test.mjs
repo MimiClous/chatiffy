@@ -82,6 +82,12 @@ test('only explicitly public assets can be downloaded', async () => {
   const logo = await fetch(`${origin}/assets/chatiffy.svg`);
   assert.equal(logo.status, 200);
   assert.match(logo.headers.get('content-type'), /image\/svg\+xml/);
+  for (const name of ['Monocraft.ttf', 'Monocraft-Bold.ttf']) {
+    const font = await fetch(`${origin}/assets/fonts/${name}`);
+    assert.equal(font.status, 200);
+    assert.equal(font.headers.get('content-type'), 'font/ttf');
+    assert.deepEqual([...new Uint8Array(await font.arrayBuffer()).slice(0, 4)], [0, 1, 0, 0]);
+  }
   assert.equal((await fetch(`${origin}/assets/../scripts/generate-icons.mjs`)).status, 404);
   assert.equal((await fetch(`${origin}/.env`)).status, 404);
   assert.equal((await fetch(`${origin}/server.mjs`)).status, 404);

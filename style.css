@@ -54,14 +54,16 @@ body { font-family: Inter, "Segoe UI", Arial, sans-serif; color: white; }
 
 /* Pixel identity: ink / lavender / mint, integer edges and hard shadows. */
 :root { --ink: #14121c; --surface: #1d1929; --edge: #3b324f; --lavender: #a78bfa; --mint: #65e0bc; --paper: #f4f0ff; }
-body { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; }
+@font-face { font-family: Monocraft; src: url('/assets/fonts/Monocraft.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: Monocraft; src: url('/assets/fonts/Monocraft-Bold.ttf') format('truetype'); font-style: normal; font-weight: 700 900; font-display: swap; }
+body { font-family: Monocraft, Consolas, "Courier New", monospace; font-variant-ligatures: none; }
 button, input, select { font: inherit; }
 .editor-mode #settings { padding: 40px 28px; background: var(--ink); background-image: radial-gradient(#30283f 1px, transparent 1px); background-size: 16px 16px; color: var(--paper); }
 .editor-shell { max-width: 960px; margin: auto; }
 .brand { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid var(--edge); padding-bottom: 24px; }
 .brand img { image-rendering: pixelated; flex: none; }
 .eyebrow, .edition { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--mint); }
-#settings h1 { margin: 4px 0 0; font-size: 36px; line-height: 1; letter-spacing: -2px; font-weight: 900; text-shadow: 3px 3px #514071; }
+#settings h1 { margin: 4px 0 0; font-size: 32px; line-height: 1.2; letter-spacing: 0; font-weight: 700; text-shadow: 3px 3px #514071; }
 .brand-dot { color: var(--mint); }
 .edition { margin-left: auto; padding: 8px; border: 1px solid var(--edge); color: var(--lavender); white-space: nowrap; }
 #settings .intro { margin: 28px 0; font-size: 23px; font-weight: 700; color: var(--paper); line-height: 1.5; }

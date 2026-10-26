@@ -29,6 +29,7 @@ const cosmeticCache = new Map();
 const rateLimits = new Map();
 
 const contentTypes = {
+  '.ttf': 'font/ttf',
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -38,6 +39,8 @@ const contentTypes = {
   '.ico': 'image/x-icon'
 };
 const publicFiles = new Map([
+  ['/assets/fonts/Monocraft.ttf', 'assets/fonts/Monocraft.ttf'],
+  ['/assets/fonts/Monocraft-Bold.ttf', 'assets/fonts/Monocraft-Bold.ttf'],
   ['/assets/chatiffy.svg', 'assets/chatiffy.svg'],
   ['/favicon.ico', 'assets/chatiffy.ico'],
   ['/', 'index.html'],

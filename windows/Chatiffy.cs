@@ -69,6 +69,10 @@ internal sealed class TrayContext : ApplicationContext
 {
     private readonly NotifyIcon tray;
     private readonly Icon appIcon;
+    private readonly string fontPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app", "assets", "fonts", "Monocraft.ttf");
+    private readonly System.Drawing.Text.PrivateFontCollection fonts = new System.Drawing.Text.PrivateFontCollection();
+    [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern int AddFontResourceEx(string file, uint flags, IntPtr reserved);
+    [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern bool RemoveFontResourceEx(string file, uint flags, IntPtr reserved);
     private readonly Control dispatcher = new Control();
     private readonly ToolStripMenuItem status = new ToolStripMenuItem("Запускается…");
     private readonly ToolStripMenuItem open = new ToolStripMenuItem("Открыть редактор");
@@ -89,7 +93,10 @@ internal sealed class TrayContext : ApplicationContext
         menu.Renderer = new ToolStripProfessionalRenderer(new PixelColors());
         menu.BackColor = Color.FromArgb(29, 25, 41);
         menu.ForeColor = Color.FromArgb(244, 240, 255);
-        menu.Font = new Font("Consolas", 10);
+        // WinForms TextRenderer uses GDI; register privately as well as with GDI+.
+        if (AddFontResourceEx(fontPath, 0x10, IntPtr.Zero) == 0) throw new IOException("Cannot load the bundled Monocraft font.");
+        fonts.AddFontFile(fontPath);
+        menu.Font = new Font(fonts.Families[0], 10, FontStyle.Regular);
         menu.ShowImageMargin = false;
         menu.ShowCheckMargin = false;
         menu.Items.Add(status);
@@ -208,6 +215,7 @@ internal sealed class TrayContext : ApplicationContext
         StopServer();
         var menuFont = tray.ContextMenuStrip.Font;
         tray.ContextMenuStrip.Dispose(); menuFont.Dispose(); tray.Dispose(); appIcon.Dispose(); startup.Dispose(); dispatcher.Dispose();
+        fonts.Dispose(); RemoveFontResourceEx(fontPath, 0x10, IntPtr.Zero);
         base.ExitThreadCore();
     }
 }
