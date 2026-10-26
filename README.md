@@ -5,8 +5,8 @@
 
 ### **Этот проект создан с помощью ИИ**
 
-![Warning](https://img.shields.io/badge/⚠️_MAY_CONTAIN_ERRORS-USE_AT_YOUR_OWN_RISK-critical?style=for-the-badge)
-![Warning](https://img.shields.io/badge/%E2%9A%A0%EF%B8%8F_%D0%9C%D0%9E%D0%96%D0%95%D0%A2_%D0%A1%D0%9E%D0%94%D0%95%D0%A0%D0%96%D0%90%D0%A2%D0%AC_%D0%9E%D0%A8%D0%98%D0%91%D0%9A%D0%98-%D0%98%D0%A1%D0%9F%D0%9E%D0%9B%D0%AC%D0%97%D0%A3%D0%99%D0%A2%D0%95_%D0%9D%D0%90%20_%D0%A1%D0%92%D0%9E%D0%99_%D0%A1%D0%A2%D0%A0%D0%90%D0%A5_%D0%98_%D0%A0%D0%98%D0%A1%D0%9A-critical?style=for-the-badge)
+![Warning](https://img.shields.io/badge/⚠️_MAY_CONTAIN_ERRORS-USE_AT_YOUR_OWN_RISK-critical?style=for-the-badge)\n
+![Warning](https://img.shields.io/badge/%E2%9A%A0%EF%B8%8F_%D0%9C%D0%9E%D0%96%D0%95%D0%A2_%D0%A1%D0%9E%D0%94%D0%95%D0%A0%D0%96%D0%90%D0%A2%D0%AC_%D0%9E%D0%A8%D0%98%D0%91%D0%9A%D0%98-%D0%98%D0%A1%D0%9F%D0%9E%D0%9B%D0%AC%D0%97%D0%A3%D0%99%D0%A2%D0%95_%D0%9D%D0%90%20_%D0%A1%D0%92%D0%9E%D0%99_%D0%A1%D0%A2%D0%A0%D0%90%D0%A5_%D0%98_%D0%A0%D0%98%D0%A1%D0%9A-critical?style=for-the-badge)\n
 **Код может содержать ошибки, баги и неточности. Проверяйте перед использованием.**
 
 </div>
