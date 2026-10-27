@@ -1,6 +1,6 @@
 {
   "name": "chatiffy",
-  "version": "1.5.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "Customizable Twitch chat overlay for OBS with 7TV emotes and Twitch badges",
@@ -8,7 +8,7 @@
     "start": "node server.mjs",
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "pnpm run typecheck && node --check server.mjs",
+    "check": "node scripts/version.mjs check && pnpm run typecheck && node --check server.mjs",
     "pretest": "pnpm run build",
     "test": "node --test test.mjs typography.test.mjs tests/*.test.mjs",
     "build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",

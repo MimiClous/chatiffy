@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
+import { assertVersion } from './version.mjs';
 const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+assertVersion(version);
 const define = { __APP_VERSION__: JSON.stringify(version) };
 await Promise.all([
   build({ entryPoints: ['src/client/main.ts'], bundle: true, define, format: 'iife', platform: 'browser', target: 'chrome100', outfile: 'build/app.js' }),
