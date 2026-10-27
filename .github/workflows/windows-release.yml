@@ -21,15 +21,19 @@ jobs:
           if ((Get-FileHash "$env:RUNNER_TEMP\node.zip").Hash.ToLowerInvariant() -ne 'd2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5') { throw 'Node checksum mismatch' }
           Expand-Archive "$env:RUNNER_TEMP\node.zip" "$env:RUNNER_TEMP\node"
           "$env:RUNNER_TEMP\node\node-v24.22.1-win-x64" >> $env:GITHUB_PATH
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
       - name: Check and test server
         run: |
-          npm run check
+          pnpm run check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm test
+          pnpm test
       - name: Build portable application
         run: ./scripts/build-windows.ps1
       - name: Test packaged application
         run: ./scripts/test-windows.ps1
+      - name: Test updater validation
+        run: ./scripts/test-updater.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: Chatiffy-windows-x64

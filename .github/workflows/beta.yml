@@ -1,0 +1,49 @@
+name: Test Windows build
+on:
+  push:
+    branches: [beta]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  beta:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Strict check and tests
+        run: |
+          pnpm run check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Mark as beta build
+        id: version
+        shell: pwsh
+        run: |
+          node scripts/version.mjs beta "${{ github.run_number }}" "${{ github.sha }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Download official runtime
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip -OutFile "$env:RUNNER_TEMP\node.zip"
+          if ((Get-FileHash "$env:RUNNER_TEMP\node.zip").Hash.ToLowerInvariant() -ne 'd2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5') { throw 'Node checksum mismatch' }
+          Expand-Archive "$env:RUNNER_TEMP\node.zip" "$env:RUNNER_TEMP\runtime"
+      - name: Build test package
+        run: ./scripts/build-windows.ps1 -NodePath "$env:RUNNER_TEMP\runtime\node-v24.22.1-win-x64\node.exe"
+      - name: Test actual Windows application
+        run: ./scripts/test-windows.ps1
+      - name: Test updater validation
+        run: ./scripts/test-updater.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Chatiffy-${{ steps.version.outputs.version }}-windows-x64
+          retention-days: 14
+          path: |
+            dist/*.zip
+            dist/*.sha256

@@ -8,6 +8,8 @@ $arch = & $NodePath -p 'process.arch'
 if ($arch -ne 'x64') { throw 'Build requires an x64 Node.js runtime.' }
 $license = Join-Path (Split-Path $NodePath -Parent) 'LICENSE'
 if (!(Test-Path $license)) { throw "Node LICENSE missing beside $NodePath. Use the official Node distribution." }
+& node (Join-Path $root 'scripts/build.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'TypeScript bundle build failed. Run pnpm install first.' }
 $out = Join-Path $root "dist\Chatiffy-$version-windows-x64"
 if (Test-Path $out) { throw "Build directory already exists: $out. Move it aside before rebuilding." }
 New-Item -ItemType Directory -Force "$out\runtime", "$out\app" | Out-Null
@@ -15,12 +17,14 @@ $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 & $compiler /nologo /target:winexe /platform:x64 /optimize+ /utf8output "/win32icon:$root\assets\chatiffy.ico" "/resource:$root\assets\chatiffy.ico,Chatiffy.Icon" "/out:$out\Chatiffy.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll (Join-Path $root 'windows\Chatiffy.cs')
 if ($LASTEXITCODE -ne 0) { throw 'C# compilation failed.' }
 Copy-Item -LiteralPath $NodePath -Destination "$out\runtime\node.exe"
-foreach ($name in @('server.mjs', 'index.html', 'app.js', 'style.css')) {
+foreach ($name in @('server.mjs', 'index.html', 'style.css')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination "$out\app\$name"
 }
+Copy-Item -LiteralPath (Join-Path $root 'build') -Destination "$out\app\build" -Recurse
 # Node redistributions must include the runtime's third-party license notices.
 Copy-Item -LiteralPath (Join-Path $root 'assets') -Destination "$out\app\assets" -Recurse
 Copy-Item -LiteralPath $license -Destination "$out\runtime\LICENSE"
+Copy-Item -LiteralPath (Join-Path $root 'windows\update.ps1') -Destination "$out\update.ps1"
 Copy-Item -LiteralPath (Join-Path $root 'windows\README.txt') -Destination "$out\README.txt"
 "Chatiffy $version`r`nNode.js $nodeVersion x64`r`n" | Set-Content "$out\VERSION.txt"
 $zip = "$out.zip"

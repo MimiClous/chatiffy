@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 internal static class Program
 {
-    internal const string Url = "http://127.0.0.1:8080";
+    internal const string Url = "http://127.0.0.1:17845";
     internal static readonly string Data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Chatiffy");
     internal static readonly string Config = Path.Combine(Data, "settings.env");
     internal static readonly string LogFile = Path.Combine(Data, "server.log");
@@ -76,6 +76,8 @@ internal sealed class TrayContext : ApplicationContext
     private readonly Control dispatcher = new Control();
     private readonly ToolStripMenuItem status = new ToolStripMenuItem("Запускается…");
     private readonly ToolStripMenuItem open = new ToolStripMenuItem("Открыть редактор");
+    private bool updating;
+    private readonly ToolStripMenuItem updates = new ToolStripMenuItem("Проверить обновления");
     private readonly System.Windows.Forms.Timer startup = new System.Windows.Forms.Timer();
     private readonly RegisteredWaitHandle stopWait;
     private Process child;
@@ -101,9 +103,14 @@ internal sealed class TrayContext : ApplicationContext
         menu.ShowCheckMargin = false;
         menu.Items.Add(status);
         menu.Items.Add(open);
-        menu.Items.Add("Настройки Twitch", null, delegate { Open(Program.Config); });
-        menu.Items.Add("Открыть журнал", null, delegate { Open(Program.LogFile); });
-        menu.Items.Add("Перезапустить сервер", null, delegate { StopServer(); StartServer(); });
+        menu.Items.Add("Диагностика", null, delegate { Open(Program.Url + "/?diagnostics=1"); });
+        updates.Click += delegate { Open(Program.Url + "/?updates=1"); };
+        menu.Items.Add(updates);
+        var advanced = new ToolStripMenuItem("Дополнительно");
+        advanced.DropDownItems.Add("Настройки Twitch", null, delegate { Open(Program.Config); });
+        advanced.DropDownItems.Add("Открыть журнал", null, delegate { Open(Program.LogFile); });
+        advanced.DropDownItems.Add("Перезапустить сервер", null, delegate { StopServer(); StartServer(); });
+        menu.Items.Add(advanced);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Выход", null, delegate { ExitThread(); });
         using (var stream = typeof(Program).Assembly.GetManifestResourceStream("Chatiffy.Icon"))
@@ -114,6 +121,30 @@ internal sealed class TrayContext : ApplicationContext
         startup.Tick += delegate { startup.Stop(); StopServer(); Failure("Сервер не запустился за 15 секунд. См. журнал."); };
         stopWait = ThreadPool.RegisterWaitForSingleObject(stop, delegate { Dispatch(delegate { ExitThread(); }); }, null, Timeout.Infinite, true);
         StartServer();
+    }
+
+    private void StartUpdate(string version)
+    {
+        if (updating) return;
+        if (!System.Text.RegularExpressions.Regex.IsMatch(version, @"^\d+\.\d+\.\d+$")) return;
+        try
+        {
+            string temp = Path.Combine(Path.GetTempPath(), "Chatiffy-update-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(temp);
+            string script = Path.Combine(temp, "update.ps1");
+            File.Copy(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "update.ps1"), script);
+            string install = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            var info = new ProcessStartInfo("powershell.exe") {
+                Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\" -Version \"" + version + "\" -InstallPath \"" + install + "\" -LauncherPid " + Process.GetCurrentProcess().Id,
+                UseShellExecute = true, WorkingDirectory = temp
+            };
+            // The helper validates and downloads before asking this launcher to quit.
+            var helper = Process.Start(info);
+            updating = true;
+            helper.EnableRaisingEvents = true;
+            helper.Exited += delegate { Dispatch(delegate { updating = false; }); helper.Dispose(); };
+        }
+        catch (Exception error) { Program.Log(error.ToString()); MessageBox.Show(error.Message, "Ошибка обновления Chatiffy", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 
     private void Open(string path)
@@ -146,8 +177,9 @@ internal sealed class TrayContext : ApplicationContext
             info.EnvironmentVariables.Remove("TWITCH_CLIENT_ID");
             info.EnvironmentVariables.Remove("TWITCH_CLIENT_SECRET");
             info.EnvironmentVariables["HOST"] = "127.0.0.1";
-            info.EnvironmentVariables["PORT"] = "8080";
+            info.EnvironmentVariables["PORT"] = "17845";
             info.EnvironmentVariables["ALLOWED_HOSTS"] = "127.0.0.1,localhost";
+            info.EnvironmentVariables["CHATIFFY_DATA_DIR"] = Program.Data;
             info.EnvironmentVariables["CHATIFFY_DESKTOP"] = "1";
             info.EnvironmentVariables["NODE_ENV"] = "production";
             var process = new Process { StartInfo = info, EnableRaisingEvents = true };
@@ -155,6 +187,10 @@ internal sealed class TrayContext : ApplicationContext
             job = new Job();
             process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) {
                 Program.Log(e.Data);
+                if (e.Data != null && e.Data.StartsWith("CHATIFFY_UPDATE_AVAILABLE ")) Dispatch(delegate {
+                    updates.Text = "Доступно обновление " + e.Data.Substring("CHATIFFY_UPDATE_AVAILABLE ".Length);
+                });
+                if (e.Data != null && e.Data.StartsWith("CHATIFFY_UPDATE ")) Dispatch(delegate { StartUpdate(e.Data.Substring("CHATIFFY_UPDATE ".Length).Trim()); });
                 if (e.Data == "CHATIFFY_READY") Dispatch(delegate {
                     if (child != process || process.HasExited) return;
                     startup.Stop(); ready = true; open.Enabled = true;
@@ -167,7 +203,7 @@ internal sealed class TrayContext : ApplicationContext
             process.Exited += delegate { Dispatch(delegate {
                 if (child != process) return;
                 startup.Stop();
-                Failure("Сервер остановлен. Возможно, порт 8080 занят. См. журнал и перезапустите сервер.");
+                Failure("Сервер остановлен. Возможно, порт 17845 занят. См. журнал и перезапустите сервер.");
             }); };
             process.Start();
             job.Assign(process);

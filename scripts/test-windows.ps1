@@ -15,7 +15,7 @@ function Wait-Until([scriptblock]$Condition, [string]$Message) {
     throw $Message
 }
 function Health {
-    try { return Invoke-RestMethod http://127.0.0.1:8080/api/health -TimeoutSec 1 } catch { return $null }
+    try { return Invoke-RestMethod http://127.0.0.1:17845/api/health -TimeoutSec 1 } catch { return $null }
 }
 function Assert([bool]$Value, [string]$Message) { if (!$Value) { throw $Message } }
 # Never interfere with an existing desktop instance or another service.
@@ -23,14 +23,14 @@ $existing = $null
 if ([Threading.Mutex]::TryOpenExisting('Local\Chatiffy.Desktop', [ref]$existing)) {
     $existing.Dispose(); throw 'Quit the running Chatiffy instance before testing.'
 }
-$probe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 8080)
+$probe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 17845)
 $probe.Start(); $probe.Stop()
 try {
     $launcher = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru
     Wait-Until { (Health).ok -eq $true } 'Packaged server did not become healthy.'
     Assert ((Health).service -eq 'Chatiffy') 'Wrong service.'
     foreach ($path in @('/', '/overlay', '/app.js', '/style.css', '/favicon.ico', '/assets/chatiffy.svg', '/assets/fonts/Monocraft.ttf', '/assets/fonts/Monocraft-Bold.ttf')) {
-        $response = Invoke-WebRequest "http://127.0.0.1:8080$path" -UseBasicParsing
+        $response = Invoke-WebRequest "http://127.0.0.1:17845$path" -UseBasicParsing
         Assert ($response.StatusCode -eq 200) "Asset failed: $path"
     }
     $server = Get-CimInstance Win32_Process -Filter "ParentProcessId = $($launcher.Id)" | Where-Object Name -eq 'node.exe'
@@ -57,7 +57,7 @@ try {
     Wait-Until { !(Get-Process -Id $server.ProcessId -ErrorAction SilentlyContinue) } 'Server survived launcher crash.'
     $launcher.Dispose(); $launcher = $null
 
-    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 8080)
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 17845)
     $listener.Start()
     $launcher = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 2

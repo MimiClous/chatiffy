@@ -12,16 +12,19 @@ services:
     tmpfs:
       - /tmp:size=16m,mode=1777
     ports:
-      - "127.0.0.1:${APP_PORT:-8080}:8080"
+      - "127.0.0.1:${APP_PORT:-17845}:17845"
+    volumes:
+      - profiles:/data
     environment:
+      CHATIFFY_DATA_DIR: "/data"
       HOST: "0.0.0.0"
-      PORT: "8080"
+      PORT: "17845"
       TWITCH_CLIENT_ID: "${TWITCH_CLIENT_ID}"
       TWITCH_CLIENT_SECRET: "${TWITCH_CLIENT_SECRET}"
       ALLOWED_HOSTS: "${ALLOWED_HOSTS}"
       API_RATE_LIMIT: "${API_RATE_LIMIT:-600}"
     healthcheck:
-      test: ["CMD", "node", "-e", "const h=(process.env.ALLOWED_HOSTS||'').split(',')[0];require('node:http').get({host:'127.0.0.1',port:8080,path:'/api/health',headers:{Host:h}},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "const h=(process.env.ALLOWED_HOSTS||'').split(',')[0];require('node:http').get({host:'127.0.0.1',port:17845,path:'/api/health',headers:{Host:h}},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -32,3 +35,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  profiles:
