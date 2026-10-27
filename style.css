@@ -128,7 +128,7 @@ button, input, select { font: inherit; }
 .preview-heading span { color: #b5abc7; font-size: 10px; }
 #previewFrame { position: relative; height: 390px; overflow: hidden; background: repeating-conic-gradient(#292333 0% 25%, #231e2c 0% 50%) 0 / 24px 24px; border: 1px solid var(--edge); }
 .editor-mode #chat { display: flex !important; }
-.editor-mode #chat .message { animation: none; }
+
 #settings details { border-top: 1px solid var(--edge); padding: 14px 0; }
 #settings details.settings-card { padding: 20px; border: 2px solid var(--edge); }
 #settings summary { cursor: pointer; font-size: 13px; color: var(--paper); line-height: 1.6; }
@@ -183,3 +183,5 @@ button:disabled { opacity: .5; cursor: wait !important; }
 #settings .layout-control { margin: 4px 0 12px; }
 #settings .layout-control select { width: 100%; }
 @media (max-width: 600px) { .onboarding { align-items: flex-start; flex-direction: column; } }
+
+#pausePreviewButton { padding: 6px 10px; border: 1px solid var(--edge); color: var(--mint); background: var(--ink); font-size: 11px; }

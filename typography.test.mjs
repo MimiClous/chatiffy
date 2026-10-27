@@ -43,7 +43,7 @@ async function editor(query = '', { storage = new Map(), profiles = new Map(), f
     WebSocket: Socket, navigator: { onLine: true, clipboard: { async writeText(value) { clipboard.push(value); } } },
     crypto: { randomUUID }, history: { replaceState(state, title, url) { history.push(url); } },
     URLSearchParams, URL, AbortController, innerWidth: 600, innerHeight: 900,
-    addEventListener() {}, setTimeout: (fn, delay) => { timers.push({ fn, delay }); return timers.length; }, clearTimeout() {}, confirm: () => true, prompt() {}
+    addEventListener() {}, setTimeout: (fn, delay) => { timers.push({ fn, delay }); return timers.length; }, clearTimeout() {}, setInterval: (fn, delay) => { timers.push({ fn, delay }); return timers.length; }, clearInterval() {}, confirm: () => true, prompt() {}
   };
   vm.runInNewContext(readFileSync(new URL('build/app.js', import.meta.url), 'utf8'), context);
   for (let i = 0; i < 10; i++) await new Promise(resolve => setImmediate(resolve));

@@ -1,3 +1,4 @@
+import { demoEmotes, startDemoChat } from './demo-chat.js';
 import { backupFilename, makeProfileBackup, parseProfileBackup, maxBackupBytes, type ProfileBackup } from '../shared/profile-transfer.js';
 import { startSplashes } from './splashes.js';
 import { appVersion } from '../shared/version.js';
@@ -9,6 +10,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   'use strict';
 
   interface Elements {
+    pausePreviewButton: HTMLButtonElement;
     onboarding: HTMLElement;
     dismissOnboardingButton: HTMLButtonElement;
     exportProfileButton: HTMLButtonElement;
@@ -401,7 +403,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   function render7tvText(container: HTMLElement, text: string) {
     const parts = text.split(/(\s+)/);
     for (const part of parts) {
-      const url = emotes7tv.get(part);
+      const url = isOverlay ? emotes7tv.get(part) : demoEmotes.get(part);
       container.append(url ? image(url, part) : document.createTextNode(part));
     }
   }
@@ -563,20 +565,31 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   function createOverlayUrl() {
     return new URL(`/overlay?profile=${profileId}`, location.origin).href;
   }
+  let previewStarted = false;
+  const previewMessages: { row: HTMLElement; time: number }[] = [];
   function renderPreview() {
-    chat.replaceChildren();
-    seenMessageIds.clear();
-    const samples = [
-      ['MLIT_M', '#1553d7', 'Привет! Как настроение?'],
-      ['Mimiclous', '#00e66b', 'Классное оформление чата ✨'],
-      ['Twitch', '#5f2edc', '★ Добро пожаловать на стрим!'],
-      ['Alcec_m', '#ff0000', 'Проверяем русский, English и эмодзи 🎮'],
-      ['ModyChot', '#c5b2ff', 'Длинное сообщение переносится на новую строку — всё должно оставаться читаемым.'],
-      ['PWGod', '#fff700', 'kekBomb'],
-      ['JunGirraf', '#5294d7', 'Я актёр.. который притворяется пьяным (я не выпил)']
-
-    ];
-    for (const [user, color, text] of samples) showMessage({ user, text, tags: { color, emotes: text === 'Kappa' ? '25:0-4' : '' } });
+    while (chat.children.length > config.maxMessages) chat.firstElementChild?.remove();
+    if (previewStarted) return;
+    previewStarted = true;
+    const demo = startDemoChat((message, time) => {
+      showMessage(message);
+      const row = chat.lastElementChild as HTMLElement | null;
+      if (row) previewMessages.push({ row, time });
+      while (previewMessages.length > 50) previewMessages.shift();
+    }, time => {
+      for (let i = previewMessages.length - 1; i >= 0; i--) {
+        const { row, time: created } = previewMessages[i];
+        if (!row.isConnected) { previewMessages.splice(i, 1); continue; }
+        if (config.lifetime > 0 && time - created >= config.lifetime * 1000) {
+          removeMessage(row); previewMessages.splice(i, 1);
+        }
+      }
+    });
+    $('pausePreviewButton').onclick = () => {
+      const paused = demo.togglePause();
+      $('pausePreviewButton').textContent = paused ? 'Продолжить чат' : 'Пауза';
+      $('pausePreviewButton').setAttribute('aria-pressed', String(paused));
+    };
   }
   function persistLocal() {
     for (const [key, value] of Object.entries(config)) save(key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value));
