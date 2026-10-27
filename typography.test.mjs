@@ -33,7 +33,8 @@ async function editor(query = '', { storage = new Map(), profiles = new Map(), f
       const id = url.split('/').at(-1);
       if (options.method === 'PUT') {
         if (failedWrites) return Response.json({ error: 'disk full' }, { status: 503 });
-        const profile = { revision: randomUUID(), settings: JSON.parse(options.body) };
+        const payload = JSON.parse(options.body);
+        const profile = { revision: randomUUID(), name: payload.name || 'Основная сцена', settings: payload.settings || payload };
         writes.push(profile); profiles.set(id, profile); return Response.json(profile);
       }
       if (failedReads) return Response.json({}, { status: 503 });

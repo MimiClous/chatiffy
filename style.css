@@ -160,3 +160,26 @@ button:disabled { opacity: .5; cursor: wait !important; }
 }
 .editor-mode #chat { inset: auto; left: 0; top: 0; transform-origin: top left; }
 .message { flex-shrink: 0; }
+.profile-bar { padding: 18px 22px; margin: 0 0 24px; border: 2px solid var(--edge); background: var(--surface); }
+#settings .profile-bar label { margin: 8px 0 14px; grid-template-columns: 110px minmax(0, 1fr); }
+#settings .profile-bar select, #settings .profile-bar input { width: 100%; }
+.profile-actions { display: flex; gap: 10px; margin: 0 0 16px; flex-wrap: wrap; }
+.profile-actions button { padding: 8px 12px; border: 1px solid var(--lavender); background: var(--ink); color: var(--paper); }
+@media (max-width: 480px) { #settings .profile-bar label { grid-template-columns: 1fr; } .profile-bar { padding: 16px; } }
+/* Minecraft-inspired splash, selected once when the editor page opens. */
+#settings .intro.splash { display: grid; align-content: center; justify-items: center; gap: 18px; min-height: 142px; margin: 20px 0 26px; padding: 12px 16px; text-align: center; }
+#settings .intro .splash-title { display: block; max-width: 100%; color: #ffff55; font-size: clamp(18px, 2.4vw, 28px); font-weight: 700; line-height: 1.35; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 2px 2px 0 #595900; transform: rotate(-4deg); animation: splash-pulse 1.15s ease-in-out infinite; }
+#settings .intro .splash-description { display: block; min-height: 3.4em; max-width: 620px; color: #b5abc7; font-size: 12px; font-weight: 400; line-height: 1.7; text-wrap: balance; }
+@keyframes splash-pulse { 0%, 100% { transform: rotate(-4deg) scale(.97); } 50% { transform: rotate(-4deg) scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { #settings .intro .splash-title { animation: none; } }
+.onboarding { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 22px; margin: 0 0 18px; background: #20332c; border: 1px solid var(--mint); }
+#settings .onboarding h2 { margin: 0 0 10px; color: var(--mint); }
+.onboarding ol { padding-left: 22px; margin: 0; font-size: 12px; line-height: 1.9; }
+#dismissOnboardingButton { flex: none; padding: 8px 12px; color: var(--paper); background: transparent; border: 1px solid var(--mint); }
+#settings .profile-transfer { padding: 10px 0; }
+#settings .profile-transfer .profile-actions { margin: 14px 0 0; }
+#settings #previewFrame { width: min(100%, var(--preview-width, 320px)); height: auto; aspect-ratio: var(--preview-ratio, 2 / 3); margin: 16px auto 0; }
+#settings .scene-summary { color: var(--paper); overflow-wrap: anywhere; }
+#settings .layout-control { margin: 4px 0 12px; }
+#settings .layout-control select { width: 100%; }
+@media (max-width: 600px) { .onboarding { align-items: flex-start; flex-direction: column; } }

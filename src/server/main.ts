@@ -222,7 +222,7 @@ const server = http.createServer(async (request, response) => {
   }
 
   try {
-    const mutation = method === 'PUT' && /^\/api\/profiles\/[a-f0-9]{32}$/.test((request.url || '').split('?')[0]) || method === 'POST' && request.url === '/api/desktop/update';
+    const mutation = method === 'PUT' && /^\/api\/profiles\/[a-f0-9]{32}$/.test((request.url || '').split('?')[0]) || method === 'POST' && ['/api/desktop/update', '/api/profiles/list'].includes(request.url || '');
     if (mutation && (request.headers.origin !== `http://${request.headers.host}` && request.headers.origin !== `https://${request.headers.host}` || !/^application\/json(?:;|$)/i.test(request.headers['content-type'] || ''))) {
       sendJson(response, 403, { error: 'Same-origin JSON request required' }, method); return;
     }
@@ -238,6 +238,9 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (url.pathname === '/api/profiles/list' && method === 'POST') {
+      sendJson(response, 200, { profiles: await profiles.list() }); return;
+    }
     if (url.pathname.startsWith('/api/profiles/')) {
       const id = url.pathname.slice('/api/profiles/'.length);
       if (method === 'PUT') {

@@ -1,12 +1,30 @@
+import { backupFilename, makeProfileBackup, parseProfileBackup, maxBackupBytes, type ProfileBackup } from '../shared/profile-transfer.js';
+import { startSplashes } from './splashes.js';
 import { appVersion } from '../shared/version.js';
 import { EmoteRegistry, sevenTvProvider } from './providers.js';
-import { fontFamilies, settingsSchema, readSettings, serializeSettings, settingsVersion, type OverlaySettings } from '../shared/settings.js';
+import { fontFamilies, canvasSizes, settingsSchema, readSettings, serializeSettings, settingsVersion, type OverlaySettings } from '../shared/settings.js';
 import { parseTags, parseIrc, twitchEmoteRanges } from './irc.js';
 import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/contracts.js';
 (() => {
   'use strict';
 
   interface Elements {
+    onboarding: HTMLElement;
+    dismissOnboardingButton: HTMLButtonElement;
+    exportProfileButton: HTMLButtonElement;
+    importProfileButton: HTMLButtonElement;
+    importProfileInput: HTMLInputElement;
+    transferStatus: HTMLParagraphElement;
+    layoutInput: HTMLSelectElement;
+    sourceDimensions: HTMLParagraphElement;
+    sceneSummary: HTMLParagraphElement;
+    splashText: HTMLSpanElement;
+    splashDescription: HTMLSpanElement;
+    profileSelect: HTMLSelectElement;
+    profileNameInput: HTMLInputElement;
+    newProfileButton: HTMLButtonElement;
+    duplicateProfileButton: HTMLButtonElement;
+    profileHint: HTMLParagraphElement;
     app: HTMLElementTagNameMap['main'];
     chat: HTMLElementTagNameMap['section'];
     connectionBadge: HTMLElementTagNameMap['div'];
@@ -105,6 +123,11 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
 
   function syncUi() {
     $('channelInput').value = String(config.channel);
+    $('layoutInput').value = config.layout;
+    const canvas = canvasSizes[config.layout];
+    $('sourceDimensions').textContent = `В OBS: ширина ${canvas.width}, высота ${canvas.height}.`;
+    $('obsHelp').textContent = `В OBS: «Источники» → «+» → «Браузер». Вставь ссылку, укажи ширину ${canvas.width} и высоту ${canvas.height}. После добавления оформление обновляется автоматически.`;
+    $('sceneSummary').textContent = `«${profileName}» · #${config.channel} · ${canvas.width} × ${canvas.height}`;
     for (const key of ['fontFamily', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing'] as const) $(`${key}Input`).value = String(config[key]);
     $('lineHeightOutput').value = config.lineHeight.toFixed(2);
     $('letterSpacingOutput').value = `${config.letterSpacing} px`;
@@ -147,13 +170,17 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   }
 
   function updateScale() {
-    const scale = isOverlay ? Math.max(.68, Math.min(1.45, Math.min(innerWidth / 600, innerHeight / 900))) : .8;
-    document.documentElement.style.setProperty('--ui-scale', scale.toFixed(3));
+    const canvas = canvasSizes[config.layout];
+    const scale = Math.max(.68, Math.min(1.45, Math.min(canvas.width / 600, canvas.height / 900)));
+    const actualScale = isOverlay ? Math.max(.68, Math.min(1.45, Math.min(innerWidth / 600, innerHeight / 900))) : scale;
+    document.documentElement.style.setProperty('--ui-scale', actualScale.toFixed(3));
     if (!isOverlay) {
       const frame = $('previewFrame');
-      const previewScale = Math.max(.1, frame.clientWidth / 600);
-      chat.style.width = '600px';
-      chat.style.height = `${frame.clientHeight / previewScale}px`;
+      frame.style.setProperty('--preview-ratio', `${canvas.width} / ${canvas.height}`);
+      frame.style.setProperty('--preview-width', `${Math.min(320, 480 * canvas.width / canvas.height)}px`);
+      const previewScale = Math.max(.1, frame.clientWidth / canvas.width);
+      chat.style.width = `${canvas.width}px`;
+      chat.style.height = `${canvas.height}px`;
       chat.style.transform = `scale(${previewScale})`;
     }
   }
@@ -521,6 +548,12 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
 
   let profileId = /^[a-f0-9]{32}$/.test(params.get('profile') || '') ? params.get('profile')! : '';
   let profileReady = false;
+  let profileName = 'Основная сцена';
+  let pendingChanges = false;
+  let profileOperation = false;
+  interface ProfileSummary { id: string; name: string; channel: string }
+  let profileList: ProfileSummary[] = [];
+  const snapshotOfProfile = () => JSON.stringify({ name: profileName, settings: config });
   let savedSnapshot = '';
   let revision = '';
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -534,12 +567,14 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     chat.replaceChildren();
     seenMessageIds.clear();
     const samples = [
-      ['Luna', '#65e0bc', 'Привет! Как настроение?'],
-      ['PixelFox', '#a78bfa', 'Классное оформление чата ✨'],
-      ['Модератор', '#65e0bc', '★ Добро пожаловать на стрим!'],
-      ['Streamer', '#ffca80', 'Проверяем русский, English и эмодзи 🎮'],
-      ['Viewer', '#c5b2ff', 'Длинное сообщение переносится на новую строку — всё должно оставаться читаемым.'],
-      ['KappaFan', '#80caff', 'Kappa']
+      ['MLIT_M', '#1553d7', 'Привет! Как настроение?'],
+      ['Mimiclous', '#00e66b', 'Классное оформление чата ✨'],
+      ['Twitch', '#5f2edc', '★ Добро пожаловать на стрим!'],
+      ['Alcec_m', '#ff0000', 'Проверяем русский, English и эмодзи 🎮'],
+      ['ModyChot', '#c5b2ff', 'Длинное сообщение переносится на новую строку — всё должно оставаться читаемым.'],
+      ['PWGod', '#fff700', 'kekBomb'],
+      ['JunGirraf', '#5294d7', 'Я актёр.. который притворяется пьяным (я не выпил)']
+
     ];
     for (const [user, color, text] of samples) showMessage({ user, text, tags: { color, emotes: text === 'Kappa' ? '25:0-4' : '' } });
   }
@@ -555,8 +590,11 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       return false;
     }
     $('channelError').textContent = '';
+    const name = $('profileNameInput').value.trim();
+    if (!name) { $('profileHint').textContent = 'Добавь название сцены, чтобы отличать её от остальных.'; $('copyButton').disabled = true; return false; }
+    profileName = name.slice(0, 64);
     config.channel = channel;
-    for (const key of ['fontFamily', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'fontSize', 'theme', 'align', 'textColor', 'panelOpacity', 'vignette', 'radius', 'maxMessages'] as const) {
+    for (const key of ['layout', 'fontFamily', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'fontSize', 'theme', 'align', 'textColor', 'panelOpacity', 'vignette', 'radius', 'maxMessages'] as const) {
       const element = $(`${key}Input`);
       Object.assign(config, { [key]: settingsSchema[key].parse(element.value) });
     }
@@ -568,17 +606,20 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     if (!profileReady || !readControls()) return false;
     clearTimeout(saveTimer);
     syncUi(); persistLocal();
-    const snapshot = JSON.stringify(config);
+    const snapshot = snapshotOfProfile();
+    const targetId = profileId;
     $('copyButton').disabled = true;
     $('saveStatus').textContent = 'Сохраняется…';
     const task = saveChain.catch(() => {}).then(async () => {
       if (snapshot !== savedSnapshot) {
-        const response = await fetchWithTimeout(`/api/profiles/${profileId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: snapshot });
+        const response = await fetchWithTimeout(`/api/profiles/${targetId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: snapshot });
         if (!response.ok) throw new Error('Не удалось сохранить профиль');
         const data = await response.json() as { revision: string };
-        savedSnapshot = snapshot; revision = data.revision;
+        if (targetId === profileId) { savedSnapshot = snapshot; revision = data.revision; }
       }
-      if (snapshot === JSON.stringify(config)) {
+      if (targetId === profileId && snapshot === snapshotOfProfile()) {
+        pendingChanges = false;
+        updateProfileOption();
         $('saveStatus').textContent = 'Сохранено · OBS обновляется автоматически';
         $('retrySaveButton').hidden = true;
         $('copyButton').disabled = false;
@@ -593,11 +634,117 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     }
   }
   function changed() {
-    if (!profileReady || !readControls()) return;
+    if (!profileReady) return;
+    pendingChanges = true;
+    if (!readControls()) return;
     persistLocal(); syncUi();
     $('saveStatus').textContent = 'Есть изменения…'; $('copyButton').disabled = true;
     clearTimeout(saveTimer); saveTimer = setTimeout(() => { void saveProfile(); }, 450);
   }
+  function updateProfileOption() {
+    const item = profileList.find(profile => profile.id === profileId);
+    if (item) { item.name = profileName; item.channel = config.channel; }
+    else profileList.push({ id: profileId, name: profileName, channel: config.channel });
+    const options = profileList.map(profile => {
+      const option = document.createElement('option');
+      option.value = profile.id; option.textContent = `${profile.name} · #${profile.channel}`;
+      return option;
+    });
+    $('profileSelect').replaceChildren(...options); $('profileSelect').value = profileId;
+    $('profileHint').textContent = `«${profileName}» — отдельная ссылка для этой сцены OBS.`;
+  }
+  async function loadProfileList() {
+    try {
+      const response = await fetchWithTimeout('/api/profiles/list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!response.ok) throw new Error('Profile list unavailable');
+      const data = await response.json() as { profiles: ProfileSummary[] };
+      profileList = data.profiles; updateProfileOption();
+    } catch { updateProfileOption(); $('profileHint').textContent = 'Список сцен недоступен. Текущий профиль открыт; обнови страницу для повторной загрузки списка.'; }
+  }
+  function lockProfileControls(locked: boolean) {
+    $('profileSelect').disabled = locked; $('newProfileButton').disabled = locked;
+    $('exportProfileButton').disabled = locked; $('importProfileButton').disabled = locked; $('layoutInput').disabled = locked;
+    $('duplicateProfileButton').disabled = locked; $('profileNameInput').disabled = locked;
+    for (const control of document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.controls input, .controls select, .controls button')) control.disabled = locked;
+    $('copyButton').disabled = locked || pendingChanges || !profileReady;
+  }
+  async function selectProfile(id: string) {
+    if (profileOperation || id === profileId) return;
+    profileOperation = true; lockProfileControls(true); clearTimeout(saveTimer);
+    try {
+      if (!await saveProfile()) { $('profileSelect').value = profileId; return; }
+      const response = await fetchWithTimeout(`/api/profiles/${id}`);
+      if (!response.ok) throw new Error('Не удалось открыть сцену. Текущий профиль сохранён.');
+      const profile = await response.json() as { name?: string; revision: string; settings: OverlaySettings };
+      profileId = id; profileName = profile.name || 'Основная сцена';
+      Object.assign(config, readSettings(serializeSettings(profile.settings, instanceId)));
+      revision = profile.revision; savedSnapshot = snapshotOfProfile(); pendingChanges = false;
+      $('profileNameInput').value = profileName; syncUi(); persistLocal(); rememberProfile(); updateProfileOption();
+      $('saveStatus').textContent = 'Сохранено · OBS обновляется автоматически'; $('copyButton').disabled = false;
+      $('obsHelp').hidden = true; $('copyButton').textContent = 'Скопировать ссылку для OBS';
+    } catch (error) { $('profileSelect').value = profileId; $('profileHint').textContent = error instanceof Error ? error.message : 'Не удалось переключить сцену.'; }
+    finally { profileOperation = false; lockProfileControls(false); }
+  }
+  function rememberProfile() {
+    history.replaceState(null, '', `/?profile=${profileId}`);
+    try { localStorage.setItem('chatiffy:lastProfile', profileId); } catch {}
+  }
+  async function createProfile(duplicate: boolean, imported?: ProfileBackup): Promise<boolean> {
+    if (!profileReady || profileOperation) return false;
+    profileOperation = true; lockProfileControls(true); clearTimeout(saveTimer);
+    try {
+      if (!await saveProfile()) return false;
+      const id = crypto.randomUUID().replaceAll('-', '');
+      const settings = imported ? { ...imported.settings } : duplicate ? { ...config } : { ...readSettings(new URLSearchParams()), channel: config.channel };
+      const baseName = imported ? imported.name.slice(0, 56) : duplicate ? `${profileName.slice(0, 45)} — копия` : 'Новая сцена';
+      let name = baseName; let suffix = 2;
+      while (profileList.some(item => item.name === name)) name = `${baseName} ${suffix++}`;
+      const response = await fetchWithTimeout(`/api/profiles/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, settings }) });
+      if (!response.ok) throw new Error('Не удалось создать сцену. Текущий профиль сохранён.');
+      const profile = await response.json() as { revision: string };
+      profileId = id; profileName = name; Object.assign(config, settings);
+      revision = profile.revision; savedSnapshot = snapshotOfProfile(); pendingChanges = false;
+      $('profileNameInput').value = name; syncUi(); persistLocal(); rememberProfile(); updateProfileOption();
+      $('saveStatus').textContent = 'Новая сцена сохранена · скопируй её ссылку в отдельный источник OBS';
+      $('obsHelp').hidden = true; $('copyButton').disabled = false;
+      return true;
+    } catch (error) { $('profileHint').textContent = error instanceof Error ? error.message : 'Не удалось создать сцену.'; return false; }
+    finally { profileOperation = false; lockProfileControls(false); }
+  }
+  $('exportProfileButton').onclick = async () => {
+    if (!profileReady || profileOperation) return;
+    profileOperation = true; lockProfileControls(true);
+    try {
+      if (!await saveProfile()) { $('transferStatus').textContent = 'Сначала сохрани изменения профиля и повтори экспорт.'; return; }
+      const data = JSON.stringify(makeProfileBackup(profileName, config), null, 2);
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/json;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url; link.download = backupFilename(profileName); document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      $('transferStatus').textContent = `Профиль «${profileName}» экспортирован. Файл содержит оформление и канал, без ключей Twitch и постоянной ссылки.`;
+    } catch { $('transferStatus').textContent = 'Не удалось создать файл экспорта. Повтори попытку.'; }
+    finally { profileOperation = false; lockProfileControls(false); }
+  };
+  $('importProfileButton').onclick = () => $('importProfileInput').click();
+  $('importProfileInput').onchange = async () => {
+    const file = $('importProfileInput').files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > maxBackupBytes) throw new Error('Файл слишком большой. Максимум — 64 КБ.');
+      const backup = parseProfileBackup(await file.text());
+      if (!await createProfile(false, backup)) { $('transferStatus').textContent = 'Импорт не завершён. Проверь сохранение текущей сцены и повтори.'; return; }
+      $('transferStatus').textContent = `Импортирована новая сцена «${profileName}». Скопируй её ссылку в OBS. Остальные профили сохранены.`;
+    } catch (error) { $('transferStatus').textContent = error instanceof Error ? error.message : 'Не удалось импортировать профиль.'; }
+    finally { $('importProfileInput').value = ''; }
+  };
+  $('dismissOnboardingButton').onclick = () => {
+    $('onboarding').hidden = true;
+    try { localStorage.setItem('chatiffy:onboardingDismissed', '1'); } catch {}
+  };
+  $('profileSelect').onchange = () => { void selectProfile($('profileSelect').value); };
+  $('newProfileButton').onclick = () => { void createProfile(false); };
+  $('duplicateProfileButton').onclick = () => { void createProfile(true); };
+  $('profileNameInput').addEventListener('input', changed);
   $('overlayUrlOutput').onclick = () => $('overlayUrlOutput').select();
   $('retrySaveButton').onclick = () => { if (profileReady) void saveProfile(); else void initialize(); };
   $('copyButton').onclick = async () => {
@@ -607,7 +754,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     $('obsHelp').hidden = false;
     setTimeout(() => { $('copyButton').textContent = 'Скопировать ссылку для OBS'; }, 2000);
   };
-  const controlIds = ['channelInput', 'fontFamilyInput', 'fontWeightInput', 'fontStyleInput', 'lineHeightInput', 'letterSpacingInput', 'fontSizeInput', 'backgroundInput', 'themeInput', 'alignInput', 'textColorInput', 'panelOpacityInput', 'vignetteInput', 'radiusInput', 'maxMessagesInput', 'lifetimeInput', 'hideMessagesInput'] as const;
+  const controlIds = ['layoutInput', 'channelInput', 'fontFamilyInput', 'fontWeightInput', 'fontStyleInput', 'lineHeightInput', 'letterSpacingInput', 'fontSizeInput', 'backgroundInput', 'themeInput', 'alignInput', 'textColorInput', 'panelOpacityInput', 'vignetteInput', 'radiusInput', 'maxMessagesInput', 'lifetimeInput', 'hideMessagesInput'] as const;
   for (const id of controlIds) $(id).addEventListener(id === 'channelInput' ? 'change' : 'input', changed);
   const presets: Record<string, Partial<OverlaySettings>> = {
     pixel: { fontSize: 28, panelOpacity: 32, vignette: 0, radius: 0, background: true, theme: 'pixel' },
@@ -622,7 +769,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   };
   $('resetButton').onclick = () => {
     if (!profileReady) return;
-    const defaults = readSettings(new URLSearchParams()); defaults.channel = config.channel;
+    const defaults = readSettings(new URLSearchParams()); defaults.channel = config.channel; defaults.layout = config.layout;
     if (JSON.stringify(config) !== JSON.stringify(defaults) && !confirm('Сбросить оформление? Выбранный канал сохранится.')) return;
     Object.assign(config, defaults); syncUi(); changed();
   };
@@ -661,7 +808,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     try {
       const response = await fetchWithTimeout(`/api/profiles/${profileId}`);
       if (response.ok) {
-        const profile = await response.json() as { settings: OverlaySettings; revision: string };
+        const profile = await response.json() as { settings: OverlaySettings; revision: string; name?: string };
         if (revision !== profile.revision) {
           const oldChannel = config.channel;
           Object.assign(config, readSettings(serializeSettings(profile.settings, instanceId))); revision = profile.revision;
@@ -683,14 +830,16 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       if (!/^[a-f0-9]{32}$/.test(profileId)) profileId = crypto.randomUUID().replaceAll('-', '');
       const response = await fetchWithTimeout(`/api/profiles/${profileId}`);
       if (response.ok) {
-        const profile = await response.json() as { settings: OverlaySettings; revision: string };
+        const profile = await response.json() as { settings: OverlaySettings; revision: string; name?: string };
         Object.assign(config, readSettings(serializeSettings(profile.settings, instanceId))); revision = profile.revision;
-        savedSnapshot = JSON.stringify(config);
+        profileName = profile.name || 'Основная сцена';
+        savedSnapshot = snapshotOfProfile();
       } else if (response.status !== 404) throw new Error('Profile unavailable');
+      $('profileNameInput').value = profileName;
       profileReady = true; syncUi();
-      history.replaceState(null, '', `/?profile=${profileId}`);
-      try { localStorage.setItem('chatiffy:lastProfile', profileId); } catch {}
+      rememberProfile();
       await saveProfile();
+      await loadProfileList(); lockProfileControls(false);
     } catch {
       $('saveStatus').textContent = 'Не удалось загрузить профиль. Проверь сервер и повтори попытку.';
       $('retrySaveButton').hidden = false;
@@ -700,9 +849,15 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   if (!isOverlay && typeof ResizeObserver !== 'undefined') new ResizeObserver(updateScale).observe($('previewFrame'));
   addEventListener('offline', () => { if (isOverlay) { clearConnectionTimers(); socket?.close(); setStatus('Нет подключения к интернету', true); } });
   addEventListener('online', () => { if (isOverlay && (profileId ? revision : true)) connect(); else if (!isOverlay) void saveProfile(); });
-  addEventListener('beforeunload', () => { stopped = true; clearTimeout(saveTimer); clearConnectionTimers(); if (socket) { socket.onclose = null; socket.close(); } });
+  addEventListener('beforeunload', (event) => {
+    if (!isOverlay && pendingChanges) { event.preventDefault(); event.returnValue = ''; return; }
+    stopped = true; clearTimeout(saveTimer); clearConnectionTimers(); if (socket) { socket.onclose = null; socket.close(); } });
   document.body.classList.add(isOverlay ? 'overlay-mode' : 'editor-mode');
-  if (!isOverlay) { $('settings').hidden = false; $('previewFrame').append(chat); }
+  if (!isOverlay) {
+    $('settings').hidden = false; $('previewFrame').append(chat); lockProfileControls(true);
+    startSplashes($('splashText'), $('splashDescription'));
+    try { $('onboarding').hidden = localStorage.getItem('chatiffy:onboardingDismissed') === '1'; } catch {}
+  }
   syncUi();
   void initialize();
   if (!isOverlay && params.has('updates')) { $('updatesSection').open = true; $('checkUpdatesButton').click(); }

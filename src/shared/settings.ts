@@ -4,8 +4,13 @@ export const fontFamilies = {
   arial: 'Arial, sans-serif', verdana: 'Verdana, sans-serif', georgia: 'Georgia, serif',
   consolas: 'Consolas, "Courier New", monospace'
 } as const;
+export const canvasSizes = {
+  standard: { width: 600, height: 900 },
+  vertical: { width: 540, height: 960 }
+} as const;
 export const settingsVersion = 6;
 export interface OverlaySettings {
+  layout: keyof typeof canvasSizes;
   channel: string; fontFamily: keyof typeof fontFamilies; fontWeight: '400' | '700';
   fontStyle: 'normal' | 'italic'; lineHeight: number; letterSpacing: number; fontSize: number;
   lifetime: number; maxMessages: number; background: boolean;
@@ -29,6 +34,7 @@ export const settingsSchema: { [K in keyof OverlaySettings]: Setting<OverlaySett
     const value = raw.toLowerCase().replace(/^#/, '');
     return /^[a-z0-9_]{1,25}$/.test(value) ? value : 'mimiclous';
   } },
+  layout: choice('layout', 'standard', ['standard', 'vertical']),
   fontFamily: choice('font', 'monocraft', Object.keys(fontFamilies) as (keyof typeof fontFamilies)[]),
   fontWeight: choice('weight', '400', ['400', '700']), fontStyle: choice('italic', 'normal', ['normal', 'italic']),
   lineHeight: numeric('line', 1.22, 1, 2), letterSpacing: numeric('spacing', 0, -1, 5),

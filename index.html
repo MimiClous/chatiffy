@@ -12,7 +12,18 @@
   <aside id="settings" hidden>
     <div class="editor-shell">
       <header class="brand"><img src="/assets/chatiffy.svg" width="48" height="48" alt=""><div><span class="eyebrow">TWITCH → OBS</span><h1>chatiffy<span class="brand-dot">_</span></h1></div><span id="versionLabel" class="edition"></span></header>
-      <p class="intro">Настрой один раз. Меняй когда захочешь.<br><span>Оформление сохраняется автоматически и обновляется в OBS.</span></p>
+      <p class="intro splash"><span id="splashText" class="splash-title">Настрой один раз!</span><span id="splashDescription" class="splash-description">Оформление сохраняется автоматически и обновляется в OBS.</span></p>
+      <section id="onboarding" class="onboarding" aria-label="Как добавить чат в OBS">
+        <div><h2>Три шага до эфира</h2><ol><li>Введи канал Twitch.</li><li>Выбери стиль и размер источника.</li><li>Скопируй ссылку в источник «Браузер» в OBS.</li></ol></div>
+        <button id="dismissOnboardingButton" type="button">Понятно, скрыть</button>
+      </section>
+      <section class="profile-bar" aria-label="Профили сцен OBS">
+        <label>Сцена OBS <select id="profileSelect" disabled aria-label="Выбрать профиль"></select></label>
+        <div class="profile-actions"><button id="newProfileButton" type="button" disabled>+ Новая сцена</button><button id="duplicateProfileButton" type="button" disabled>Скопировать профиль</button></div>
+        <details class="profile-transfer"><summary>Перенести или сохранить профиль</summary><div class="profile-actions"><button id="exportProfileButton" type="button" disabled>Экспорт в файл</button><button id="importProfileButton" type="button" disabled>Импорт из файла</button></div><input id="importProfileInput" type="file" accept=".json,application/json" hidden><p id="transferStatus" role="status">Экспортируй профиль для резервной копии или переноса. Импорт создаст новую сцену.</p></details>
+        <label>Название <input id="profileNameInput" maxlength="64" value="Основная сцена" placeholder="Например: Общение" disabled></label>
+        <p id="profileHint" role="status">У каждой сцены своя постоянная ссылка. Переключение здесь не меняет другие источники OBS.</p>
+      </section>
       <div class="workspace">
         <div class="controls">
           <section class="settings-card"><h2>1. Твой канал</h2>
@@ -56,8 +67,9 @@
           </section>
         </div>
         <div class="preview-column">
-          <section class="settings-card preview-card"><div class="preview-heading"><h2>Предпросмотр</h2><span>Тестовые сообщения</span></div><div id="previewFrame" aria-label="Предпросмотр чата"></div><p>Пример без подключения к Twitch. В OBS фон источника остаётся прозрачным.</p></section>
+          <section class="settings-card preview-card"><div class="preview-heading"><h2>Предпросмотр</h2><span>Тестовые сообщения</span></div><label class="layout-control">Размер источника OBS <select id="layoutInput"><option value="standard">Обычный · 600 × 900</option><option value="vertical">Вертикальный · 540 × 960</option></select></label><div id="previewFrame" aria-label="Предпросмотр чата"></div><p id="sourceDimensions">В OBS: ширина 600, высота 900.</p><p>Пример без подключения к Twitch. В OBS фон источника остаётся прозрачным.</p></section>
           <section class="settings-card export-card"><h2>3. Добавь в OBS</h2>
+            <p id="sceneSummary" class="scene-summary"></p>
             <p id="saveStatus" role="status" aria-live="polite">Загрузка настроек…</p>
             <button id="retrySaveButton" type="button" hidden>Повторить сохранение</button>
             <button id="copyButton" type="button" disabled>Скопировать ссылку для OBS</button>
