@@ -13,7 +13,6 @@
 
 </div>
 <div align="center">
-  <img src="https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif" width="400" alt="AI warning" />
   <img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNjg4c2cyNmNoZGxrM3F3OHJzZXVsa2FzYzBvMHFzMmcxOThqNzY2cSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/774uK11mxE3W0cjE8L/giphy.gif"/>
 </div>
 ---
