@@ -13,6 +13,19 @@ try {
     Compress-Archive -Path $package -DestinationPath $zip
     $hash = (Get-FileHash $zip).Hash
     & "$root\windows\update.ps1" -Version 9.9.9 -PackagePath $zip -ExpectedHash $hash -ValidateOnly
+    $sumFile = Join-Path $work 'release.sha256'
+    $releaseName = 'Chatiffy-9.9.9-windows-x64.zip'
+    # Exercise the same file decoding path as GitHub's binary .sha256 download.
+    [IO.File]::WriteAllBytes($sumFile, [Text.Encoding]::ASCII.GetBytes("$hash  $releaseName`r`n"))
+    & "$root\windows\update.ps1" -Version 9.9.9 -PackagePath $zip -ChecksumPath $sumFile -ValidateOnly
+    [IO.File]::WriteAllText($sumFile, "$hash *$releaseName`n", [Text.UTF8Encoding]::new($true))
+    & "$root\windows\update.ps1" -Version 9.9.9 -PackagePath $zip -ChecksumPath $sumFile -ValidateOnly
+    foreach ($invalid in @("$hash  wrong.zip", '<html>download error</html>', "$hash  $releaseName`n$hash  other.zip")) {
+        [IO.File]::WriteAllText($sumFile, $invalid)
+        $rejected = $false
+        try { & "$root\windows\update.ps1" -Version 9.9.9 -PackagePath $zip -ChecksumPath $sumFile -ValidateOnly } catch { $rejected = $true }
+        if (!$rejected) { throw 'Invalid checksum file accepted.' }
+    }
     $rejected = $false
     try { & "$root\windows\update.ps1" -Version 9.9.9 -PackagePath $zip -ExpectedHash ('0' * 64) -ValidateOnly } catch { $rejected = $true }
     if (!$rejected) { throw 'Wrong checksum accepted.' }

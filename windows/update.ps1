@@ -4,6 +4,7 @@ param(
     [int]$LauncherPid,
     [string]$PackagePath,
     [string]$ExpectedHash,
+    [string]$ChecksumPath,
     [switch]$ValidateOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -20,9 +21,18 @@ try {
         $base = "https://github.com/MimiClous/chatiffy/releases/download/v$Version"
         $PackagePath = Join-Path $work $name
         Invoke-WebRequest "$base/$name" -OutFile $PackagePath -UseBasicParsing -TimeoutSec 180
-        $sum = (Invoke-WebRequest "$base/$name.sha256" -UseBasicParsing -TimeoutSec 30).Content
-        if ($sum -notmatch ('^([a-fA-F0-9]{64})\s+' + [regex]::Escape($name) + '\s*$')) { throw 'Invalid release checksum file.' }
-        $ExpectedHash = $Matches[1]
+        # GitHub serves .sha256 as application/octet-stream. In Windows PowerShell 5.1
+        # response.Content can be byte[], not text: always download and decode the file.
+        $ChecksumPath = Join-Path $work "$name.sha256"
+        Invoke-WebRequest "$base/$name.sha256" -OutFile $ChecksumPath -UseBasicParsing -TimeoutSec 30
+    }
+    if ($ChecksumPath) {
+        if ((Get-Item -LiteralPath $ChecksumPath).Length -gt 4096) { throw 'Invalid release checksum file: too large.' }
+        $sum = [IO.File]::ReadAllText($ChecksumPath).Trim().TrimStart([char]0xFEFF)
+        $pattern = '\A(?<hash>[a-fA-F0-9]{64})[ \t]+\*?' + [regex]::Escape($name) + '\z'
+        $match = [regex]::Match($sum, $pattern)
+        if (!$match.Success) { throw 'Invalid release checksum file. Nothing installed.' }
+        $ExpectedHash = $match.Groups['hash'].Value
     }
     if ($ExpectedHash -notmatch '^[a-fA-F0-9]{64}$' -or (Get-FileHash $PackagePath -Algorithm SHA256).Hash -ne $ExpectedHash) { throw 'SHA-256 mismatch. Nothing installed.' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem

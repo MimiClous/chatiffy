@@ -39,6 +39,7 @@ jobs:
       - name: Test actual Windows application
         run: ./scripts/test-windows.ps1
       - name: Test updater validation
+        shell: powershell
         run: ./scripts/test-updater.ps1
       - uses: actions/upload-artifact@v4
         with:

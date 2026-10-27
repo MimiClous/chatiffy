@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -50,7 +51,7 @@ internal static class Program
                 {
                     Directory.CreateDirectory(Data);
                     if (!File.Exists(Config)) File.WriteAllText(Config, "# Optional Twitch credentials. Save and restart from the tray.\r\nTWITCH_CLIENT_ID=\r\nTWITCH_CLIENT_SECRET=\r\n");
-                    using (var context = new TrayContext(stop)) Application.Run(context);
+                    using (var context = new TrayContext(stop, Array.IndexOf(args, "--autostart") >= 0)) Application.Run(context);
                 }
                 finally { mutex.ReleaseMutex(); }
             }
@@ -77,6 +78,8 @@ internal sealed class TrayContext : ApplicationContext
     private readonly ToolStripMenuItem status = new ToolStripMenuItem("Запускается…");
     private readonly ToolStripMenuItem open = new ToolStripMenuItem("Открыть редактор");
     private bool updating;
+    private readonly bool quietStartup;
+    private readonly ToolStripMenuItem autostart = new ToolStripMenuItem("Запускать вместе с Windows");
     private readonly ToolStripMenuItem updates = new ToolStripMenuItem("Проверить обновления");
     private readonly System.Windows.Forms.Timer startup = new System.Windows.Forms.Timer();
     private readonly RegisteredWaitHandle stopWait;
@@ -85,8 +88,9 @@ internal sealed class TrayContext : ApplicationContext
     private bool closing;
     private bool ready;
 
-    internal TrayContext(EventWaitHandle stop)
+    internal TrayContext(EventWaitHandle stop, bool fromAutostart)
     {
+        quietStartup = fromAutostart;
         dispatcher.CreateControl();
         status.Enabled = false;
         open.Enabled = false;
@@ -100,12 +104,32 @@ internal sealed class TrayContext : ApplicationContext
         fonts.AddFontFile(fontPath);
         menu.Font = new Font(fonts.Families[0], 10, FontStyle.Regular);
         menu.ShowImageMargin = false;
-        menu.ShowCheckMargin = false;
+        menu.ShowCheckMargin = true;
         menu.Items.Add(status);
         menu.Items.Add(open);
         menu.Items.Add("Диагностика", null, delegate { Open(Program.Url + "/?diagnostics=1"); });
         updates.Click += delegate { Open(Program.Url + "/?updates=1"); };
         menu.Items.Add(updates);
+        try {
+            // Keep an explicitly enabled registration valid after moving the portable folder.
+            if (StartupRegistration.Enabled) StartupRegistration.SetEnabled(true);
+            autostart.Checked = StartupRegistration.Enabled;
+        } catch (Exception error) { Program.Log("Autostart: " + error.Message); }
+        autostart.ToolTipText = "Запуск в трее при входе в Windows, без открытия браузера.";
+        autostart.Click += delegate {
+            try {
+                StartupRegistration.SetEnabled(!StartupRegistration.Enabled);
+                autostart.Checked = StartupRegistration.Enabled;
+            } catch (Exception error) {
+                Program.Log(error.ToString());
+                MessageBox.Show(error.Message, "Не удалось изменить автозагрузку Chatiffy", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        };
+        menu.Opening += delegate {
+            try { autostart.Checked = StartupRegistration.Enabled; }
+            catch (Exception error) { Program.Log("Autostart: " + error.Message); }
+        };
+        menu.Items.Add(autostart);
         var advanced = new ToolStripMenuItem("Дополнительно");
         advanced.DropDownItems.Add("Настройки Twitch", null, delegate { Open(Program.Config); });
         advanced.DropDownItems.Add("Открыть журнал", null, delegate { Open(Program.LogFile); });
@@ -196,7 +220,7 @@ internal sealed class TrayContext : ApplicationContext
                     startup.Stop(); ready = true; open.Enabled = true;
                     status.Text = "Работает: " + Program.Url;
                     tray.Text = "Chatiffy — сервер работает";
-                    tray.ShowBalloonTip(3000, "Chatiffy запущен", "Двойной щелчок по значку откроет редактор.", ToolTipIcon.Info);
+                    if (!quietStartup) tray.ShowBalloonTip(3000, "Chatiffy запущен", "Двойной щелчок по значку откроет редактор.", ToolTipIcon.Info);
                 });
             };
             process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { Program.Log(e.Data); };
@@ -253,6 +277,28 @@ internal sealed class TrayContext : ApplicationContext
         tray.ContextMenuStrip.Dispose(); menuFont.Dispose(); tray.Dispose(); appIcon.Dispose(); startup.Dispose(); dispatcher.Dispose();
         fonts.Dispose(); RemoveFontResourceEx(fontPath, 0x10, IntPtr.Zero);
         base.ExitThreadCore();
+    }
+}
+
+// Current-user registration only; does not require administrator privileges.
+internal static class StartupRegistration
+{
+    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string ValueName = "Chatiffy";
+    internal static bool Enabled {
+        get {
+            using (var key = Registry.CurrentUser.OpenSubKey(RunKey))
+                return key != null && !String.IsNullOrWhiteSpace(key.GetValue(ValueName) as string);
+        }
+    }
+    internal static void SetEnabled(bool enabled) {
+        if (enabled) {
+            using (var key = Registry.CurrentUser.CreateSubKey(RunKey))
+                key.SetValue(ValueName, "\"" + Application.ExecutablePath + "\" --autostart", RegistryValueKind.String);
+        } else {
+            using (var key = Registry.CurrentUser.OpenSubKey(RunKey, true))
+                if (key != null) key.DeleteValue(ValueName, false);
+        }
     }
 }
 
