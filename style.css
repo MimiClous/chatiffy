@@ -185,3 +185,9 @@ button:disabled { opacity: .5; cursor: wait !important; }
 @media (max-width: 600px) { .onboarding { align-items: flex-start; flex-direction: column; } }
 
 #pausePreviewButton { padding: 6px 10px; border: 1px solid var(--edge); color: var(--mint); background: var(--ink); font-size: 11px; }
+/* Keep the full canvas ratio in portrait mode; the border must not shrink its content. */
+#settings #previewFrame { box-sizing: content-box; width: min(calc(100% - 2px), var(--preview-width, 426px)); }
+#settings #previewFrame.preview-native { width: calc(100% - 2px); height: min(640px, 70vh); aspect-ratio: auto; overflow: auto; }
+#settings .layout-control, #settings .preview-zoom { display: block; margin: 10px 0; }
+#settings .layout-control select, #settings .preview-zoom select { display: block; width: 100%; margin-top: 8px; }
+.preview-card { overflow: hidden; }

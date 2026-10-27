@@ -10,6 +10,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   'use strict';
 
   interface Elements {
+    previewZoomInput: HTMLSelectElement;
     pausePreviewButton: HTMLButtonElement;
     onboarding: HTMLElement;
     dismissOnboardingButton: HTMLButtonElement;
@@ -173,17 +174,23 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
 
   function updateScale() {
     const canvas = canvasSizes[config.layout];
-    const scale = Math.max(.68, Math.min(1.45, Math.min(canvas.width / 600, canvas.height / 900)));
-    const actualScale = isOverlay ? Math.max(.68, Math.min(1.45, Math.min(innerWidth / 600, innerHeight / 900))) : scale;
-    document.documentElement.style.setProperty('--ui-scale', actualScale.toFixed(3));
+    const width = isOverlay ? innerWidth : canvas.width;
+    const height = isOverlay ? innerHeight : canvas.height;
+    const scale = Math.max(.68, Math.min(1.45, Math.min(width / 600, height / 900)));
+    document.documentElement.style.setProperty('--ui-scale', scale.toFixed(3));
+    // Match source padding to the logical canvas, not the editor window dimensions.
+    chat.style.padding = `${Math.max(14, Math.min(30, Math.min(width, height) * .027))}px`;
     if (!isOverlay) {
       const frame = $('previewFrame');
+      const native = $('previewZoomInput').value === 'actual';
+      frame.classList.toggle('preview-native', native);
       frame.style.setProperty('--preview-ratio', `${canvas.width} / ${canvas.height}`);
-      frame.style.setProperty('--preview-width', `${Math.min(320, 480 * canvas.width / canvas.height)}px`);
-      const previewScale = Math.max(.1, frame.clientWidth / canvas.width);
+      frame.style.setProperty('--preview-width', `${Math.min(430, 640 * canvas.width / canvas.height)}px`);
+      const previewScale = native ? 1 : Math.max(.01, frame.clientWidth / canvas.width);
       chat.style.width = `${canvas.width}px`;
       chat.style.height = `${canvas.height}px`;
       chat.style.transform = `scale(${previewScale})`;
+      if (native) frame.scrollTop = frame.scrollHeight;
     }
   }
 
@@ -573,6 +580,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     previewStarted = true;
     const demo = startDemoChat((message, time) => {
       showMessage(message);
+      if ($('previewZoomInput').value === 'actual') $('previewFrame').scrollTop = $('previewFrame').scrollHeight;
       const row = chat.lastElementChild as HTMLElement | null;
       if (row) previewMessages.push({ row, time });
       while (previewMessages.length > 50) previewMessages.shift();
@@ -724,6 +732,10 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     } catch (error) { $('profileHint').textContent = error instanceof Error ? error.message : 'Не удалось создать сцену.'; return false; }
     finally { profileOperation = false; lockProfileControls(false); }
   }
+  $('previewZoomInput').onchange = () => {
+    updateScale();
+    try { localStorage.setItem('chatiffy:previewZoom', $('previewZoomInput').value); } catch {}
+  };
   $('exportProfileButton').onclick = async () => {
     if (!profileReady || profileOperation) return;
     profileOperation = true; lockProfileControls(true);
@@ -869,6 +881,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   if (!isOverlay) {
     $('settings').hidden = false; $('previewFrame').append(chat); lockProfileControls(true);
     startSplashes($('splashText'), $('splashDescription'));
+    try { $('previewZoomInput').value = localStorage.getItem('chatiffy:previewZoom') === 'actual' ? 'actual' : 'fit'; } catch {}
     try { $('onboarding').hidden = localStorage.getItem('chatiffy:onboardingDismissed') === '1'; } catch {}
   }
   syncUi();
