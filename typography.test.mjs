@@ -16,8 +16,9 @@ async function editor(query = '', { storage = new Map(), profiles = new Map(), f
     _value: '', get value() { return this._value; }, set value(value) { this._value = String(value); },
     clientWidth: 600, clientHeight: 390, children: [], dataset: {}, style: { values: {}, setProperty(k, v) { this.values[k] = v; } },
     classList: { toggle() {}, remove() {}, add() {} }, checked: false,
+    prepend(...nodes) { this.children.unshift(...nodes); },
     append(...nodes) { this.children.push(...nodes); }, replaceChildren() { this.children = []; },
-    addEventListener(event, fn) { this[event] = fn; }, querySelector() { return null; },
+    addEventListener(event, fn) { this[event] = fn; }, querySelector() { return null; }, querySelectorAll() { return []; },
     focus() {}, select() {}, setAttribute() {}, remove() {}, click() { return this.onclick(); }
   });
   const get = id => { if (!elements.has(id)) elements.set(id, make()); return elements.get(id); };

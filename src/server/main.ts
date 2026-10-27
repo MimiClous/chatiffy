@@ -1,3 +1,4 @@
+import { publicBadges, publicChannel } from './twitch-public.js';
 import { appVersion } from '../shared/version.js';
 import { ProfileStore } from './profiles.js';
 import { checkRelease, type ReleaseUpdate } from './updates.js';
@@ -271,15 +272,27 @@ const server = http.createServer(async (request, response) => {
 
     if (url.pathname === '/api/badges') {
       const channelId = url.searchParams.get('channelId');
-      if (!/^\d{1,20}$/.test(channelId || '')) {
+      if (channelId !== null && !/^\d{1,20}$/.test(channelId)) {
         sendJson(response, 400, { error: 'Valid channelId is required' }, method);
         return;
       }
-      const [globalBadges, channelBadges] = await Promise.all([
-        cached(badgeCache, 'global', 60 * 60 * 1000, () => twitchApi<BadgeSet>('/chat/badges/global')),
-        cached(badgeCache, `channel:${channelId}`, 60 * 60 * 1000, () => twitchApi<BadgeSet>(`/chat/badges?broadcaster_id=${channelId}`))
-      ]);
-      sendJson(response, 200, { global: globalBadges.data, channel: channelBadges.data }, method);
+      const load = async (id?: string) => {
+        if (twitchClientId && twitchClientSecret) {
+          try { return await twitchApi<BadgeSet>(id ? `/chat/badges?broadcaster_id=${id}` : '/chat/badges/global'); }
+          catch { /* Public catalog also works in portable builds without OAuth configuration. */ }
+        }
+        return publicBadges(id);
+      };
+      const global = cached(badgeCache, 'global', 60 * 60 * 1000, () => load());
+      const channel = channelId ? cached(badgeCache, `channel:${channelId}`, 60 * 60 * 1000, () => load(channelId))
+        : Promise.resolve({ data: [] as BadgeSet[] });
+      const [globalResult, channelResult] = await Promise.allSettled([global, channel]);
+      if (globalResult.status === 'rejected' && channelResult.status === 'rejected') throw globalResult.reason;
+      if (globalResult.status === 'rejected' && !channelId) throw globalResult.reason;
+      sendJson(response, 200, {
+        global: globalResult.status === 'fulfilled' ? globalResult.value.data : [],
+        channel: channelResult.status === 'fulfilled' ? channelResult.value.data : []
+      }, method);
       return;
     }
 
@@ -290,7 +303,11 @@ const server = http.createServer(async (request, response) => {
         return;
       }
       const channel = await cached(channelCache, login, 6 * 60 * 60 * 1000, async () => {
-        const result = await twitchApi<TwitchChannel>(`/users?login=${encodeURIComponent(login)}`);
+        let result: HelixResponse<TwitchChannel>;
+        if (twitchClientId && twitchClientSecret) {
+          try { result = await twitchApi<TwitchChannel>(`/users?login=${encodeURIComponent(login)}`); }
+          catch { result = await publicChannel(login); }
+        } else result = await publicChannel(login);
         if (!result.data?.[0]) {
           const error = new Error('Twitch channel not found');
           Object.assign(error, { status: 404 });

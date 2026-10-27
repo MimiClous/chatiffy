@@ -1,3 +1,4 @@
+import { demoIdentities } from './demo-identities.js';
 import { demoEmotes, startDemoChat } from './demo-chat.js';
 import { backupFilename, makeProfileBackup, parseProfileBackup, maxBackupBytes, type ProfileBackup } from '../shared/profile-transfer.js';
 import { startSplashes } from './splashes.js';
@@ -254,28 +255,40 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       ['subscriber/0', { url: cdn('5d9f2208-5dd8-11e7-8513-2ff4adfae661'), title: 'Подписчик' }],
       ['founder/0', { url: cdn('fc71386c-86cd-11e7-a55d-43f591dc0c71'), title: 'Основатель' }]
     ]);
+    if (generation !== assetGeneration) return;
     twitchBadges = next;
 
     try {
       // На HTTP-сервере полный каталог безопасно загружается через локальный API.
       if (location.protocol === 'http:' || location.protocol === 'https:') {
-        const response = await fetchWithTimeout(`/api/badges?channelId=${channelId}`, {}, 9000);
-        if (response.ok) {
-          const data = await response.json();
-          addHelixBadges(data.global, next);
-          addHelixBadges(data.channel, next); // Канальные версии имеют приоритет.
+        const url = channelId ? `/api/badges?channelId=${channelId}` : '/api/badges';
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const response = await fetchWithTimeout(url, {}, 9000);
+            if (!response.ok) throw new Error('Twitch badge catalog unavailable');
+            const data = await response.json();
+            addHelixBadges(data.global, next);
+            addHelixBadges(data.channel, next); // Канальные версии имеют приоритет.
+            break;
+          } catch (error) {
+            if (generation !== assetGeneration || attempt === 1) throw error;
+          }
         }
       }
       if (generation !== assetGeneration) return;
       twitchBadges = next;
-    } catch (_) { /* встроенного набора достаточно */ }
+      for (const row of chat.querySelectorAll<HTMLElement>('.message')) renderBadges(row, row.dataset.badges);
+    } catch (_) { /* Встроенные значки остаются при недоступности Twitch. */ }
   }
 
   async function refreshAssets(channel: string) {
     const generation = ++assetGeneration;
     emotes7tv = new Map();
+    const globalBadges = loadBadges('', generation);
     try {
       const twitchId = await resolveTwitchId(channel);
+      if (generation !== assetGeneration) return;
+      await globalBadges;
       if (generation !== assetGeneration) return;
       await Promise.allSettled([
         load7tv(twitchId, generation),
@@ -294,15 +307,11 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     return img;
   }
 
-  function renderBadges(container: HTMLElement, tag: string | undefined) {
-    if (!tag) return;
+  function appendBadges(container: HTMLElement, badges: readonly Badge[]) {
+    if (!badges.length) return;
     const wrap = document.createElement('span');
     wrap.className = 'badges';
-    for (const badgeId of tag.split(',')) {
-      const [setId] = badgeId.split('/');
-      const badge = twitchBadges.get(badgeId)
-        || ((setId === 'subscriber' || setId === 'founder') ? twitchBadges.get(`${setId}/0`) : null);
-      if (!badge) continue;
+    for (const badge of badges) {
       const img = document.createElement('img');
       img.className = 'badge';
       img.src = badge.url;
@@ -312,7 +321,21 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       img.onerror = () => img.remove();
       wrap.append(img);
     }
-    if (wrap.childElementCount) container.append(wrap);
+    container.prepend(wrap);
+    return wrap;
+  }
+
+  function renderBadges(container: HTMLElement, tag: string | undefined) {
+    container.querySelector('.badges-twitch')?.remove();
+    if (!tag) return;
+    const badges: Badge[] = [];
+    for (const badgeId of tag.split(',')) {
+      const [setId] = badgeId.split('/');
+      const badge = twitchBadges.get(badgeId)
+        || ((setId === 'subscriber' || setId === 'founder') ? twitchBadges.get(`${setId}/0`) : null);
+      if (badge) badges.push(badge);
+    }
+    appendBadges(container, badges)?.classList.add('badges-twitch');
   }
 
   function rgba7tv(value: number | null | undefined) {
@@ -377,10 +400,10 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     if (!cosmetic || !row.isConnected) return;
     paint7tvAuthor(author, cosmetic.paint, rgba7tv(cosmetic.color));
     if (!cosmetic.badge?.url) return;
-    let wrap = row.querySelector<HTMLElement>('.badges');
+    let wrap = row.querySelector<HTMLElement>('.badges-7tv');
     if (!wrap) {
       wrap = document.createElement('span');
-      wrap.className = 'badges';
+      wrap.className = 'badges badges-7tv';
       row.insertBefore(wrap, author);
     }
     if (wrap.querySelector(`[data-7tv-badge="${cosmetic.badge.id}"]`)) return;
@@ -432,11 +455,16 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     row.className = 'message';
     row.dataset.messageId = messageId;
     row.dataset.userId = message.tags['user-id'] || '';
+    row.dataset.badges = message.tags.badges || '';
     const author = document.createElement('span');
     author.className = 'author';
     author.style.color = message.tags.color || '#b89cff';
     author.textContent = `${message.tags['display-name'] || message.user}:`;
     renderBadges(row, message.tags.badges);
+    if (!isOverlay) {
+      const identity = Object.values(demoIdentities).find(item => item.userId === row.dataset.userId);
+      if (identity) appendBadges(row, identity.badges);
+    }
     row.append(author, document.createTextNode(' '));
     renderContent(row, message.text, message.tags.emotes);
     chat.append(row);

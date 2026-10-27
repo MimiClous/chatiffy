@@ -1,3 +1,4 @@
+import { demoIdentities } from './demo-identities.js';
 import type { DemoNickname } from './demo-roster.js';
 import type { ChatMessage } from '../shared/contracts.js';
 
@@ -276,7 +277,9 @@ export function startDemoChat(emit: (message: ChatMessage, time: number) => void
   let index = 0; let serial = 0; let clock = 0; let last = Date.now(); let nextAt = 0; let paused = false;
   function next() {
     const [user, color, text] = conversation[index++ % conversation.length];
-    emit({ user, text, tags: { id: `preview-${++serial}`, color } }, clock);
+    const identity = demoIdentities[user];
+    emit({ user: identity.login, text, tags: { id: `preview-${++serial}`, color,
+      'display-name': user, 'user-id': identity.userId } }, clock);
     nextAt = clock + 1400 + Math.random() * 1700;
   }
   // A few messages make the initial preview useful, then new lines arrive naturally.
