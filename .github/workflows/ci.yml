@@ -17,9 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check syntax
-        run: npm run check
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Check types
+        run: pnpm run check
       - name: Run integration tests
-        run: npm test
+        run: pnpm test
       - name: Build production image
         run: docker build -t chatiffy:test .

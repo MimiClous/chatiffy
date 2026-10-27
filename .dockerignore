@@ -7,5 +7,7 @@
 node_modules
 npm-debug.log
 dist
+build
 windows
-scripts
+
+.pnpm-store/

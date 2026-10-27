@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { request } from 'node:http';
 
 const port = 19000 + Math.floor(Math.random() * 1000);
 const origin = `http://127.0.0.1:${port}`;
 let child;
+let dataDirectory;
 
 function requestWithHost(hostHeader) {
   return new Promise((resolve, reject) => {
@@ -31,9 +34,10 @@ async function waitForServer() {
 }
 
 test.before(async () => {
+  dataDirectory = await mkdtemp(join(tmpdir(), 'chatiffy-test-'));
   child = spawn(process.execPath, ['server.mjs'], {
     cwd: new URL('.', import.meta.url),
-    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), ALLOWED_HOSTS: '127.0.0.1,localhost', TWITCH_CLIENT_ID: '', TWITCH_CLIENT_SECRET: '' },
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), CHATIFFY_DATA_DIR: dataDirectory, ALLOWED_HOSTS: '127.0.0.1,localhost', TWITCH_CLIENT_ID: '', TWITCH_CLIENT_SECRET: '' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   await waitForServer();
@@ -47,6 +51,7 @@ test.after(async () => {
     new Promise((resolve) => setTimeout(resolve, 2000))
   ]);
   if (child.exitCode === null) child.kill('SIGKILL');
+  await rm(dataDirectory, { recursive: true, force: true });
 });
 
 test('health endpoint reports service state without exposing secrets', async () => {
@@ -92,6 +97,9 @@ test('only explicitly public assets can be downloaded', async () => {
   assert.equal((await fetch(`${origin}/.env`)).status, 404);
   assert.equal((await fetch(`${origin}/server.mjs`)).status, 404);
   assert.equal((await fetch(`${origin}/package.json`)).status, 404);
+  for (const path of ['/src/client/main.ts', '/src/server/main.ts', '/build/server.mjs', '/build/modules/shared/settings.js', '/pnpm-lock.yaml', '/tsconfig.json']) {
+    assert.equal((await fetch(`${origin}${path}`)).status, 404, path);
+  }
 });
 
 test('API validates inputs and methods before contacting Twitch', async () => {
@@ -111,15 +119,15 @@ test('HEAD returns headers without a response body', async () => {
 test('client DOM bindings and Compose service stay consistent', async () => {
   const [html, javascript, compose] = await Promise.all([
     readFile(new URL('index.html', import.meta.url), 'utf8'),
-    readFile(new URL('app.js', import.meta.url), 'utf8'),
+    readFile(new URL('build/app.js', import.meta.url), 'utf8'),
     readFile(new URL('compose.yaml', import.meta.url), 'utf8')
   ]);
   const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((match) => match[1]));
-  const references = new Set([...javascript.matchAll(/\$\('([^']+)'\)/g)].map((match) => match[1]));
+  const references = new Set([...javascript.matchAll(/\$\(['"]([^'"]+)['"]\)/g)].map((match) => match[1]));
   assert.deepEqual([...references].filter((id) => !ids.has(id)), []);
   assert.match(compose, /^services:\s*$/m);
   assert.match(compose, /^  zakvielchat:\s*$/m);
-  assert.match(compose, /127\.0\.0\.1:\$\{APP_PORT:-8080\}:8080/);
+  assert.match(compose, /127\.0\.0\.1:\$\{APP_PORT:-17845\}:17845/);
   assert.match(compose, /headers:\{Host:h\}/);
 });
 
@@ -155,4 +163,30 @@ test('desktop server shuts down when its owner sends shutdown or disconnects', a
       if (desktop.exitCode === null) desktop.kill();
     }
   }
+});
+
+
+test('profiles persist normalized settings and reject cross-origin mutations', async () => {
+  const path = `${origin}/api/profiles/${'a'.repeat(32)}`;
+  const options = { method: 'PUT', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'TEST', fontFamily: 'georgia', fontSize: 500, background: false }) };
+  assert.equal((await fetch(path)).status, 404);
+  assert.equal((await fetch(path, { ...options, headers: { ...options.headers, Origin: 'https://attacker.example' } })).status, 403);
+  const response = await fetch(path, options);
+  assert.equal(response.status, 200);
+  const saved = await response.json();
+  assert.equal(saved.settings.channel, 'test');
+  assert.equal(saved.settings.fontSize, 48);
+  assert.equal(saved.settings.background, false);
+  const restored = await fetch(path);
+  assert.equal(restored.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await restored.json(), saved);
+  assert.equal((await fetch(path, { method: 'HEAD' })).status, 200);
+  assert.equal((await fetch(path, { ...options, body: '{bad json' })).status, 400);
+  assert.equal((await fetch(path, { ...options, body: 'x'.repeat(17000) })).status, 413);
+});
+
+test('desktop update cannot run in the standalone server or from another origin', async () => {
+  const options = { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: '{}' };
+  assert.equal((await fetch(`${origin}/api/desktop/update`, options)).status, 409);
+  assert.equal((await fetch(`${origin}/api/desktop/update`, { ...options, headers: { ...options.headers, Origin: 'https://attacker.example' } })).status, 403);
 });

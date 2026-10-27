@@ -1,68 +1,82 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Chatiffy — Twitch Chat Overlay</title>
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chatiffy — оформление чата для OBS</title>
+  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main id="app">
-    <section id="chat" aria-live="polite"></section>
-    <div id="connectionBadge"><span class="loader"><i></i></span><span id="status">Подключение…</span></div>
-    <button id="settingsButton" title="Настройки">⚙</button>
-    <aside id="settings" hidden>
-      <div class="editor-shell">
-      <header class="brand"><img src="/assets/chatiffy.svg" width="64" height="64" alt=""><div><span class="eyebrow">TWITCH → OBS</span><h1>chatiffy<span class="brand-dot">_</span></h1></div><span class="edition">PIXEL EDITION</span></header>
-      <p class="intro">Твой чат. Твои пиксели.<br><span>Настрой оформление и забери ссылку для OBS.</span></p>
-      <div class="settings-grid">
-      <section class="settings-card"><h2><span>01</span> Канал и сообщения</h2>
-      <label>Канал Twitch <input id="channelInput" value="mimiclous" autocomplete="off" maxlength="25" pattern="[A-Za-z0-9_]+"></label>
-      <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>
-      <label>Сообщение видно <input id="lifetimeInput" type="range" min="0" max="120" value="0"><output id="lifetimeOutput">всегда</output></label>
-      <label>Максимум сообщений <input id="maxMessagesInput" type="number" min="5" max="30" value="9"></label>
-      </section>
-      <section class="settings-card"><h2><span>02</span> Оформление</h2>
-      <label>Стиль
-        <select id="themeInput">
-          <option value="pixel">Пиксельный</option>
-          <option value="glass">Стекло</option>
-          <option value="clean">Чистый</option>
-          <option value="neon">Неон</option>
-        </select>
-      </label>
-      <label>Выравнивание
-        <select id="alignInput">
-          <option value="left">Слева</option>
-          <option value="right">Справа</option>
-        </select>
-      </label>
-      <label>Цвет текста <input id="textColorInput" type="color" value="#ffffff"></label>
-      <label>Прозрачность панели <input id="panelOpacityInput" type="range" min="0" max="80" value="32"><output id="panelOpacityOutput">32%</output></label>
-      <label>Сила виньетки <input id="vignetteInput" type="range" min="0" max="100" value="55"><output id="vignetteOutput">55%</output></label>
-      <label>Скругление <input id="radiusInput" type="range" min="0" max="40" value="0"><output id="radiusOutput">0 px</output></label>
-      <label class="check"><input id="backgroundInput" type="checkbox"> Отдельные подложки сообщений</label>
-      <div class="presets" aria-label="Готовые стили">
-        <button type="button" data-preset="pixel">Пиксели</button>
-        <button type="button" data-preset="soft">Мягкий</button>
-        <button type="button" data-preset="compact">Компактный</button>
-        <button type="button" data-preset="neon">Неон</button>
-        <button type="button" data-preset="transparent">Без фона</button>
+<main id="app">
+  <section id="chat" aria-live="polite"></section>
+  <div id="connectionBadge"><span class="loader"><i></i></span><span id="status">Подключение…</span></div>
+  <aside id="settings" hidden>
+    <div class="editor-shell">
+      <header class="brand"><img src="/assets/chatiffy.svg" width="48" height="48" alt=""><div><span class="eyebrow">TWITCH → OBS</span><h1>chatiffy<span class="brand-dot">_</span></h1></div><span id="versionLabel" class="edition"></span></header>
+      <p class="intro">Настрой один раз. Меняй когда захочешь.<br><span>Оформление сохраняется автоматически и обновляется в OBS.</span></p>
+      <div class="workspace">
+        <div class="controls">
+          <section class="settings-card"><h2>1. Твой канал</h2>
+            <label>Канал Twitch <input id="channelInput" autocomplete="off" maxlength="25" placeholder="mimiclous" spellcheck="false"></label>
+            <p id="channelError" role="alert"></p>
+            <h2>Готовый стиль</h2>
+            <div class="presets" aria-label="Готовые стили">
+              <button type="button" data-preset="pixel">Пиксельный</button><button type="button" data-preset="compact">Минимализм</button>
+              <button type="button" data-preset="soft">Стекло</button><button type="button" data-preset="neon">Неон</button><button type="button" data-preset="transparent">Прозрачный</button>
+            </div>
+          </section>
+          <section class="settings-card"><h2>2. Настрой под себя</h2>
+            <details open><summary>Текст</summary>
+              <label>Шрифт <select id="fontFamilyInput"><option value="monocraft">Monocraft</option><option value="segoe">Segoe UI</option><option value="arial">Arial</option><option value="verdana">Verdana</option><option value="georgia">Georgia</option><option value="consolas">Consolas</option></select></label>
+              <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>
+              <label>Цвет текста <input id="textColorInput" type="color" value="#ffffff"></label>
+              <details><summary>Дополнительно</summary>
+                <label>Начертание <select id="fontWeightInput"><option value="400">Обычное</option><option value="700">Жирное</option></select></label>
+                <label>Наклон <select id="fontStyleInput"><option value="normal">Прямой</option><option value="italic">Курсив</option></select></label>
+                <label>Межстрочный интервал <input id="lineHeightInput" type="range" min="1" max="2" step="0.01" value="1.22"><output id="lineHeightOutput">1.22</output></label>
+                <label>Интервал букв <input id="letterSpacingInput" type="range" min="-1" max="5" step="0.1" value="0"><output id="letterSpacingOutput">0 px</output></label>
+                <p>Monocraft включён в приложение. Остальные шрифты должны быть установлены на компьютере с OBS.</p>
+              </details>
+            </details>
+            <details><summary>Фон и расположение</summary>
+              <label>Стиль <select id="themeInput"><option value="pixel">Пиксельный</option><option value="glass">Стекло</option><option value="clean">Минимализм</option><option value="neon">Неон</option></select></label>
+              <label>Сообщения <select id="alignInput"><option value="left">Слева</option><option value="right">Справа</option></select></label>
+              <label class="check"><input id="backgroundInput" type="checkbox"> Подложка каждого сообщения</label>
+              <label>Непрозрачность панели <input id="panelOpacityInput" type="range" min="0" max="80" value="32"><output id="panelOpacityOutput">32%</output></label>
+              <details><summary>Дополнительно</summary>
+                <label>Затемнение по краям <input id="vignetteInput" type="range" min="0" max="100" value="55"><output id="vignetteOutput">55%</output></label>
+                <label>Скругление панели <input id="radiusInput" type="range" min="0" max="40" value="0"><output id="radiusOutput">0 px</output></label>
+              </details>
+            </details>
+            <details><summary>Сообщения</summary>
+              <label>Сообщений на экране <input id="maxMessagesInput" type="number" min="5" max="30" value="9"></label>
+              <label class="check"><input id="hideMessagesInput" type="checkbox"> Скрывать сообщения по таймеру</label>
+              <label id="lifetimeLabel">Скрывать через <input id="lifetimeInput" type="range" min="1" max="120" value="30"><output id="lifetimeOutput">30 сек</output></label>
+            </details>
+            <button id="resetButton" class="secondary" type="button">Сбросить оформление</button>
+          </section>
+        </div>
+        <div class="preview-column">
+          <section class="settings-card preview-card"><div class="preview-heading"><h2>Предпросмотр</h2><span>Тестовые сообщения</span></div><div id="previewFrame" aria-label="Предпросмотр чата"></div><p>Пример без подключения к Twitch. В OBS фон источника остаётся прозрачным.</p></section>
+          <section class="settings-card export-card"><h2>3. Добавь в OBS</h2>
+            <p id="saveStatus" role="status" aria-live="polite">Загрузка настроек…</p>
+            <button id="retrySaveButton" type="button" hidden>Повторить сохранение</button>
+            <button id="copyButton" type="button" disabled>Скопировать ссылку для OBS</button>
+            <p id="obsHelp" hidden>В OBS: «Источники» → «+» → «Браузер». Вставь ссылку и задай размер 600 × 900. Дальше изменения появятся автоматически.</p>
+            <details><summary>Показать ссылку</summary><label class="stack">Постоянная ссылка OBS <input id="overlayUrlOutput" readonly></label><p>Сохрани ссылку в надёжном месте: она даёт доступ к этому профилю. При смене порта потребуется заменить адрес источника.</p></details>
+            <p id="debug" role="status" aria-live="polite"></p>
+          </section>
+          <details id="updatesSection" class="settings-card"><summary>Приложение и обновления</summary>
+            <p id="updateStatus" role="status">Проверить наличие новой версии Chatiffy.</p>
+            <button id="checkUpdatesButton" type="button">Проверить обновления</button>
+            <button id="installUpdateButton" type="button" hidden>Обновиться и перезапустить</button>
+            <a id="releaseLink" href="https://github.com/MimiClous/chatiffy/releases" target="_blank" rel="noopener noreferrer" hidden>Открыть релиз на GitHub</a>
+            <p>Перед обновлением сохрани работу в OBS: чат ненадолго отключится. Настройки и постоянная ссылка сохранятся.</p>
+          </details>
+          <details id="diagnosticsSection" class="settings-card"><summary>Диагностика</summary><button id="diagnosticsButton" type="button">Проверить локальный сервер</button><pre id="diagnosticsOutput"></pre></details>
+        </div>
       </div>
-      </section>
-      <section class="settings-card export-card"><h2><span>03</span> Готово к эфиру</h2>
-      <button id="applyButton">Применить и подключиться</button>
-      <button id="copyButton" type="button">Скопировать ссылку для OBS</button>
-      <label class="stack">Готовая OBS-ссылка <input id="overlayUrlOutput" readonly></label>
-      <p>В OBS добавьте источник «Браузер» и вставьте готовую ссылку в поле URL. Рекомендуемый размер: 600 × 900.</p>
-      <p id="debug" role="status" aria-live="polite"></p>
-      </section>
-      </div>
-      <footer class="editor-footer"><span class="pixel-led"></span> Сделано для твоего стрима <span>CHATIFFY / OBS OVERLAY</span></footer>
-      </div>
-    </aside>
-  </main>
-  <script src="app.js"></script>
-</body>
-</html>
+    </div>
+  </aside>
+</main>
+<script src="app.js"></script>
+</body></html>
