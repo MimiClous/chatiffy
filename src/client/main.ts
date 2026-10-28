@@ -841,6 +841,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     $('obsHelp').hidden = false;
     setTimeout(() => { $('copyButton').textContent = 'Скопировать ссылку для OBS'; }, 2000);
   };
+  $('channelInput').addEventListener('change', changed);
   const controlIds = ['layoutInput', 'channelInput', 'fontFamilyInput', 'fontWeightInput', 'fontStyleInput', 'lineHeightInput', 'letterSpacingInput', 'fontSizeInput', 'backgroundInput', 'themeInput', 'alignInput', 'textColorInput', 'panelOpacityInput', 'vignetteInput', 'radiusInput', 'maxMessagesInput', 'lifetimeInput', 'hideMessagesInput'] as const;
   for (const id of controlIds) $(id).addEventListener('input', changed);
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) button.onclick = () => {
