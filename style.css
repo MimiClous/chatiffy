@@ -198,3 +198,21 @@ button:disabled { opacity: .5; cursor: wait !important; }
 /* Painted text must not inherit the message shadow over its transparent glyphs. */
 .author-painted { display: inline-block; text-shadow: none; background-repeat: no-repeat; }
 .badge { flex: none; }
+
+/* Profile selection stays visible; infrequent management actions live in the sidebar. */
+#settings .brand-profile { display: flex; align-items: center; gap: 8px; margin: 0 0 0 auto; font-size: 11px; color: var(--mint); min-width: 0; }
+#settings .brand-profile select { width: clamp(130px, 19vw, 220px); max-width: 100%; }
+.brand .edition { margin-left: 0; }
+.controls .profile-manager { margin: 0; padding: 14px 18px; border: 1px solid var(--edge); background: var(--surface); }
+.profile-manager > summary { cursor: pointer; font-size: 12px; color: var(--lavender); }
+.profile-manager[open] > summary { margin-bottom: 16px; }
+#settings .profile-manager label { grid-template-columns: 1fr; gap: 8px; }
+#settings .profile-manager input { width: 100%; }
+.profile-manager .profile-actions { flex-wrap: wrap; }
+#settings .profile-manager p { font-size: 11px; line-height: 1.6; }
+@media (max-width: 600px) {
+  .brand { flex-wrap: wrap; }
+  #settings .brand-profile { order: 4; flex-basis: 100%; margin: 8px 0 0; }
+  #settings .brand-profile select { flex: 1; width: auto; }
+  .brand .edition { margin-left: auto; }
+}
