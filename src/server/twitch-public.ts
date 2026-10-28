@@ -40,3 +40,13 @@ export async function publicChannel(login: string): Promise<HelixResponse<Twitch
   );
   return { data: result.user ? [{ id: result.user.id, login: result.user.login, display_name: result.user.displayName }] : [] };
 }
+
+export async function publicUserBadges(userId: string) {
+  if (!/^\d{1,20}$/.test(userId)) throw new Error('Invalid Twitch ID');
+  const result = await publicQuery<{ user: { displayBadges: PublicBadge[] } | null }>(
+    `query { user(id: "${userId}") { displayBadges { ${badgeFields} } } }`
+  );
+  if (!result.user) throw new Error('Twitch user unavailable');
+  return result.user.displayBadges.filter(b => /^https:\/\/static-cdn\.jtvnw\.net\//.test(b.imageURL))
+    .map(b => ({ url: b.imageURL, title: b.title }));
+}

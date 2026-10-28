@@ -1,4 +1,5 @@
-import { publicBadges, publicChannel } from './twitch-public.js';
+import { demoIdentities } from '../client/demo-identities.js';
+import { publicBadges, publicChannel, publicUserBadges } from './twitch-public.js';
 import { appVersion } from '../shared/version.js';
 import { ProfileStore } from './profiles.js';
 import { checkRelease, type ReleaseUpdate } from './updates.js';
@@ -36,6 +37,7 @@ let twitchToken = { value: '', expiresAt: 0 };
 let tokenRequest: Promise<string> | null = null;
 const channelCache = new Map<string, CacheEntry<TwitchChannel>>();
 const badgeCache = new Map<string, CacheEntry<HelixResponse<BadgeSet>>>();
+const previewBadgeCache = new Map<string, CacheEntry<import('../shared/contracts.js').Badge[]>>();
 const cosmeticCache = new Map<string, CacheEntry<Cosmetics>>();
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
@@ -317,6 +319,15 @@ const server = http.createServer(async (request, response) => {
       });
       sendJson(response, 200, { id: channel.id, login: channel.login, displayName: channel.display_name }, method);
       return;
+    }
+
+    if (url.pathname === '/api/preview/badges') {
+      const userId = url.searchParams.get('userId') || '';
+      if (!Object.values(demoIdentities).some(i => i.userId === userId)) {
+        sendJson(response, 400, { error: 'Unknown preview identity' }, method); return;
+      }
+      const badges = await cached(previewBadgeCache, userId, 5 * 60 * 1000, () => publicUserBadges(userId));
+      sendJson(response, 200, { badges }, method); return;
     }
 
     if (url.pathname === '/api/7tv-cosmetics') {

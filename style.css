@@ -191,3 +191,7 @@ button:disabled { opacity: .5; cursor: wait !important; }
 #settings .layout-control, #settings .preview-zoom { display: block; margin: 10px 0; }
 #settings .layout-control select, #settings .preview-zoom select { display: block; width: 100%; margin-top: 8px; }
 .preview-card { overflow: hidden; }
+
+/* Painted text must not inherit the message shadow over its transparent glyphs. */
+.author-painted { display: inline-block; text-shadow: none; background-repeat: no-repeat; }
+.badge { flex: none; }

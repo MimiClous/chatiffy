@@ -338,6 +338,22 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     appendBadges(container, badges)?.classList.add('badges-twitch');
   }
 
+  const previewBadgeRequests = new Map<string, { until: number; request: Promise<Badge[] | null> }>();
+  async function renderCurrentPreviewBadges(row: HTMLElement, userId: string, fallback: Badge[]) {
+    let entry = previewBadgeRequests.get(userId);
+    if (!entry || Date.now() > entry.until) {
+      const request = fetchWithTimeout(`/api/preview/badges?userId=${userId}`, {}, 9000)
+        .then(async response => response.ok ? (await response.json()).badges as Badge[] : null).catch(() => null);
+      entry = { until: Date.now() + 300000, request }; previewBadgeRequests.set(userId, entry);
+    }
+    const badges = await entry.request;
+    if (!badges || !row.isConnected) return;
+    const next = [...badges];
+    for (const badge of fallback) if (badge.title === 'Verified' && !next.some(b => b.url === badge.url)) next.push(badge);
+    row.querySelector('.badges-preview')?.remove();
+    appendBadges(row, next)?.classList.add('badges-preview');
+  }
+
   function rgba7tv(value: number | null | undefined) {
     if (typeof value !== 'number' || !Number.isInteger(value)) return '';
     return `rgba(${(value >>> 24) & 255}, ${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${((value & 255) / 255).toFixed(3)})`;
@@ -348,6 +364,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       if (fallbackColor) author.style.color = fallbackColor;
       return;
     }
+    author.classList.add('author-painted');
     const kind = String(paint.function || '').toUpperCase().replaceAll('-', '_');
     const stops = Array.isArray(paint.stops)
       ? paint.stops.filter((stop) => Number.isFinite(stop.at) && Number.isInteger(stop.color))
@@ -369,6 +386,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       author.style.backgroundClip = 'text';
       author.style.webkitBackgroundClip = 'text';
       author.style.color = 'transparent';
+      author.style.webkitTextFillColor = 'transparent';
     } else if (solid) {
       author.style.color = solid;
     }
@@ -463,7 +481,10 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     renderBadges(row, message.tags.badges);
     if (!isOverlay) {
       const identity = Object.values(demoIdentities).find(item => item.userId === row.dataset.userId);
-      if (identity) appendBadges(row, identity.badges);
+      if (identity) {
+        appendBadges(row, identity.badges)?.classList.add('badges-preview');
+        renderCurrentPreviewBadges(row, identity.userId, identity.badges);
+      }
     }
     row.append(author, document.createTextNode(' '));
     renderContent(row, message.text, message.tags.emotes);
