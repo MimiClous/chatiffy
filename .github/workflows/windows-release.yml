@@ -35,10 +35,15 @@ jobs:
       - name: Test updater validation
         shell: powershell
         run: ./scripts/test-updater.ps1
+      - name: Build Setup installer
+        run: ./scripts/build-setup.ps1
+      - name: Test Setup installation and removal
+        run: ./scripts/test-setup.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: Chatiffy-windows-x64
           path: |
+            dist/*.exe
             dist/*.zip
             dist/*.sha256
       - name: Publish release
@@ -48,16 +53,4 @@ jobs:
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag does not match package version' }
-          gh release create $env:GITHUB_REF_NAME dist/*.zip dist/*.sha256 --verify-tag --title "Chatiffy $version" --notes-file windows/RELEASE.md
-      - name: Consolidate superseded release pages (keep Git tags)
-        if: github.ref == 'refs/tags/v1.4.5'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          gh release view v1.4.5 --json assets --jq '.assets[].name'
-          if ($LASTEXITCODE -ne 0) { throw 'New release is not published; keep previous releases' }
-          foreach ($tag in @('v1.4.2', 'v1.4.3', 'v1.4.4')) {
-            gh release delete $tag --yes
-            if ($LASTEXITCODE -ne 0) { throw "Could not remove superseded release $tag" }
-          }
+          gh release create $env:GITHUB_REF_NAME dist/*.zip dist/*-Setup.exe dist/*.sha256 --verify-tag --title "Chatiffy $version" --notes-file windows/RELEASE.md

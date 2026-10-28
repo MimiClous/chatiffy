@@ -66,6 +66,16 @@ try {
     Start-Sleep -Milliseconds 1000
     Copy-Item -Path (Join-Path $source '*') -Destination $InstallPath -Recurse -Force
     Start-Process (Join-Path $InstallPath 'Chatiffy.exe') -WorkingDirectory $InstallPath | Out-Null
+    # Setup and portable share the same verified payload. Preserve the uninstaller;
+    # synchronize Installed Apps metadata only for this exact Setup directory.
+    $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Chatiffy_is1'
+    try {
+        $registration = Get-ItemProperty -LiteralPath $uninstallKey -ErrorAction SilentlyContinue
+        if ($registration -and $registration.InstallLocation -and
+            [IO.Path]::GetFullPath($registration.InstallLocation).TrimEnd('\') -eq [IO.Path]::GetFullPath($InstallPath).TrimEnd('\')) {
+            Set-ItemProperty -LiteralPath $uninstallKey -Name DisplayVersion -Value $Version
+        }
+    } catch { Write-Warning 'Updated successfully; Installed Apps version could not be refreshed.' }
     Write-Host "Updated to $Version. Backup: $backup"
 } catch {
     if ($stopped -and $backup) {
