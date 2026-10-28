@@ -286,3 +286,11 @@ button:disabled { opacity: .5; cursor: wait !important; }
 .preview-heading { flex-wrap: wrap; gap: 6px; }
 
 .message { white-space: pre-wrap; }
+
+/* Keep preview controls compact and reserve the remaining height for the canvas. */
+.preview-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+#settings .preview-toolbar label { margin: 0; min-width: 0; font-size: 11px; }
+#settings .preview-toolbar select { margin-top: 3px; padding: 4px; }
+#previewStatus { margin: 6px 0; font-size: 11px; }
+#settings #previewFrame { margin-top: 6px; flex-shrink: 0; }
+#sourceDimensions { margin: 6px 0 0; font-size: 11px; }
