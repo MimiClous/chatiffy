@@ -12,7 +12,8 @@
     "pretest": "pnpm run build",
     "test": "node --test test.mjs typography.test.mjs tests/*.test.mjs",
     "build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
-    "test:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows.ps1"
+    "test:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows.ps1",
+    "dev:menu": "node scripts/dev-menu.mjs"
   },
   "engines": {
     "node": ">=20"
