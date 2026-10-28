@@ -207,3 +207,22 @@ test('clearing a paused preview explains how to resume without changing OBS sett
   get('pausePreviewButton').onclick();
   assert.equal(get('pausePreviewButton').textContent, 'Пауза');
 });
+
+test('demo restart refills a cleared preview and is disabled for live channels', async () => {
+  const { get } = await editor();
+  get('clearPreviewButton').onclick();
+  get('restartDemoButton').onclick();
+  assert.equal(get('chat').children.length, 5);
+  get('previewSourceInput').value = 'live'; get('previewSourceInput').onchange();
+  assert.equal(get('restartDemoButton').disabled, true);
+});
+
+test('preview backdrop persists independently of profile settings', async () => {
+  const first = await editor();
+  const count = first.writes.length;
+  first.get('previewBackdropInput').value = 'light'; first.get('previewBackdropInput').onchange();
+  assert.equal(first.get('previewFrame').dataset.backdrop, 'light');
+  assert.equal(first.writes.length, count);
+  const second = await editor('', { storage: first.storage, profiles: first.profiles });
+  assert.equal(second.get('previewBackdropInput').value, 'light');
+});

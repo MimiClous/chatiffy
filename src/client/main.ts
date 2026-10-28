@@ -12,6 +12,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
 
   interface Elements {
     undoAppearanceButton: HTMLButtonElement;
+    restartDemoButton: HTMLButtonElement;
+    previewBackdropInput: HTMLSelectElement;
     clearPreviewButton: HTMLButtonElement;
     previewSourceInput: HTMLSelectElement;
     previewStatus: HTMLParagraphElement;
@@ -520,7 +522,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     chat.append(row);
     render7tvCosmetics(row, author, row.dataset.userId, message.user);
     while (chat.children.length > config.maxMessages) chat.firstElementChild?.remove();
-    if ((isOverlay || $('previewSourceInput').value !== 'demo') && config.lifetime > 0) setTimeout(() => removeMessage(row), config.lifetime * 1000);
+    if (isOverlay && config.lifetime > 0) setTimeout(() => removeMessage(row), config.lifetime * 1000);
+    if (!isOverlay && $('previewSourceInput').value !== 'demo') livePreviewMessages.push({ row, time: livePreviewTime });
   }
 
   function handleModerationLine(line: string) {
@@ -656,6 +659,21 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   let livePreviewChannel = '';
   let previewStarted = false;
   const previewMessages: { row: HTMLElement; time: number }[] = [];
+  const livePreviewMessages: { row: HTMLElement; time: number }[] = [];
+  let livePreviewTime = 0;
+  let lastPreviewTick = Date.now();
+  if (!isOverlay) setInterval(() => {
+    const now = Date.now(); const elapsed = Math.min(now - lastPreviewTick, 1000); lastPreviewTick = now;
+    if (livePreviewPaused || document.hidden || $('previewSourceInput').value === 'demo') return;
+    livePreviewTime += elapsed;
+    for (let i = livePreviewMessages.length - 1; i >= 0; i--) {
+      const { row, time } = livePreviewMessages[i];
+      if (!row.isConnected) { livePreviewMessages.splice(i, 1); continue; }
+      if (config.lifetime > 0 && livePreviewTime - time >= config.lifetime * 1000) {
+        removeMessage(row); livePreviewMessages.splice(i, 1);
+      }
+    }
+  }, 250);
   function renderPreview() {
     if (profileReady && $('previewSourceInput').value !== 'demo' && livePreviewChannel !== config.channel) {
       livePreviewChannel = config.channel; chat.replaceChildren(); seenMessageIds.clear();
@@ -686,6 +704,12 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       if (enginePaused !== shouldPause) enginePaused = demo.togglePause();
     };
     syncDemoPlayback();
+    $('restartDemoButton').onclick = () => {
+      if ($('previewSourceInput').value !== 'demo') return;
+      chat.replaceChildren(); seenMessageIds.clear(); previewMessages.length = 0;
+      demo.restart();
+      $('previewStatus').textContent = demoIsPaused ? 'Демо начато заново · на паузе' : 'Демо начато заново';
+    };
     $('pausePreviewButton').onclick = () => {
       const paused = $('previewSourceInput').value === 'demo' ? (demoIsPaused = !demoIsPaused) : (livePreviewPaused = !livePreviewPaused);
       syncDemoPlayback();
@@ -851,7 +875,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     clearConnectionTimers(); ++connectionGeneration;
     if (socket) { socket.onclose = null; socket.close(); socket = undefined; }
     demoIsPaused = false; syncDemoPlayback(); livePreviewChannel = ''; livePreviewPaused = false;
-    chat.replaceChildren(); seenMessageIds.clear(); previewMessages.length = 0;
+    chat.replaceChildren(); seenMessageIds.clear(); previewMessages.length = 0; livePreviewMessages.length = 0;
+    $('restartDemoButton').disabled = $('previewSourceInput').value !== 'demo';
     $('pausePreviewButton').textContent = 'Пауза'; $('pausePreviewButton').setAttribute('aria-pressed', 'false');
     $('previewStatus').textContent = $('previewSourceInput').value === 'demo' ? 'Демо-чат · можно сразу настраивать оформление.' : 'Ожидаем новые сообщения канала · история не загружается';
     if ($('previewSourceInput').value === 'demo') {
@@ -859,6 +884,18 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       $('debug').textContent = '';
     }
     renderPreview();
+  };
+  const backdropChoices = ['checker', 'dark', 'light'];
+  let backdrop = 'checker';
+  try { backdrop = localStorage.getItem('chatiffy:previewBackdrop') || backdrop; } catch {}
+  if (!backdropChoices.includes(backdrop)) backdrop = 'checker';
+  $('previewBackdropInput').value = backdrop;
+  $('previewFrame').dataset.backdrop = backdrop;
+  $('previewBackdropInput').onchange = () => {
+    const value = $('previewBackdropInput').value;
+    if (!backdropChoices.includes(value)) return;
+    $('previewFrame').dataset.backdrop = value;
+    try { localStorage.setItem('chatiffy:previewBackdrop', value); } catch {}
   };
   $('previewZoomInput').onchange = () => {
     updateScale();
@@ -915,7 +952,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     Object.assign(config, presets[button.dataset.preset || '']); syncUi(); changed();
   };
   $('clearPreviewButton').onclick = () => {
-    chat.replaceChildren(); previewMessages.length = 0;
+    chat.replaceChildren(); previewMessages.length = 0; livePreviewMessages.length = 0;
     $('previewStatus').textContent = (demoIsPaused || livePreviewPaused)
       ? 'Предпросмотр очищен · нажмите «Продолжить чат», чтобы появились сообщения'
       : $('previewSourceInput').value === 'demo'

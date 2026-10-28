@@ -296,5 +296,8 @@ export function startDemoChat(emit: (message: ChatMessage, time: number) => void
     if (clock >= nextAt) next();
   }, 250);
   addEventListener('pagehide', () => clearInterval(timer), { once: true });
-  return { togglePause() { paused = !paused; last = Date.now(); return paused; } };
+  return {
+    togglePause() { paused = !paused; last = Date.now(); return paused; },
+    restart() { index = 0; clock = 0; last = Date.now(); for (let i = 0; i < 5; i++) next(); }
+  };
 }

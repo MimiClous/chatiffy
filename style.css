@@ -279,3 +279,8 @@ button:disabled { opacity: .5; cursor: wait !important; }
 #undoAppearanceButton { margin-top: 12px; width: 100%; }
 #clearPreviewButton { padding: 6px 10px; border: 1px solid var(--edge); color: var(--paper); background: var(--ink); font-size: 11px; }
 .preview-heading h2 { margin-right: auto !important; }
+
+/* Preview-only surfaces never change the OBS overlay background. */
+#settings #previewFrame[data-backdrop="dark"] { background: #13151a; }
+#settings #previewFrame[data-backdrop="light"] { background: #f0f1f4; }
+.preview-heading { flex-wrap: wrap; gap: 6px; }
