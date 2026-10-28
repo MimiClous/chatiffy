@@ -1018,14 +1018,48 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     } catch (error) { $('updateStatus').textContent = error instanceof Error ? error.message : 'Нет связи с GitHub.'; }
     finally { $('checkUpdatesButton').disabled = false; }
   };
+  let updateInProgress = false;
+  const updateStages: Record<string, string> = {
+    starting: 'Запускаем обновлятор Windows…', downloading: 'Скачиваем выпуск и контрольную сумму…',
+    verifying: 'Проверяем SHA-256 и содержимое архива…', backup: 'Создаём резервную копию приложения…',
+    installing: 'Устанавливаем обновление. Локальный сервер временно отключится…',
+    restarting: 'Перезапускаем Chatiffy…', complete: 'Обновление установлено. Обнови страницу редактора.'
+  };
+  async function followUpdate() {
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < deadline) {
+      let response: Response | undefined;
+      try { response = await fetchWithTimeout('/api/desktop/update-status', {}, 4000); }
+      catch { $('updateStatus').textContent = 'Ожидаем возвращения локального сервера после обновления…'; }
+      if (response?.ok) {
+        const progress = await response.json() as { stage: string; message?: string; updatedAt?: number };
+        if (progress.stage === 'failed') throw new Error(progress.message || 'Обновлятор завершился с ошибкой.');
+        if (progress.stage === 'starting' && progress.updatedAt && Date.now() - progress.updatedAt > 45000) {
+          throw new Error('Обновлятор не запустился. Проверь окно Windows и попробуй ещё раз.');
+        }
+        if (updateStages[progress.stage]) $('updateStatus').textContent = updateStages[progress.stage];
+        if (progress.stage === 'complete') return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    throw new Error('Не удалось дождаться завершения. Проверь окно обновлятора и запусти Chatiffy, если он закрыт.');
+  }
   $('installUpdateButton').onclick = async () => {
-    $('installUpdateButton').disabled = true;
+    if (updateInProgress) return;
+    updateInProgress = true;
+    $('installUpdateButton').disabled = true; $('checkUpdatesButton').disabled = true;
+    $('updateStatus').textContent = updateStages.starting;
     try {
       const response = await fetchWithTimeout('/api/desktop/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, 12000);
       if (!response.ok) { const data = await response.json(); throw new Error(data.error); }
-      $('updateStatus').textContent = 'Открыто окно обновления Windows. Оно скачает и проверит архив, затем перезапустит Chatiffy. После запуска обнови эту страницу.';
-    } catch (error) { $('updateStatus').textContent = error instanceof Error ? error.message : 'Ошибка обновления'; $('installUpdateButton').disabled = false; }
-    finally { $('installUpdateButton').disabled = false; }
+      await followUpdate();
+      $('installUpdateButton').hidden = true;
+    } catch (error) {
+      $('updateStatus').textContent = error instanceof Error ? error.message : 'Ошибка обновления';
+      $('installUpdateButton').textContent = 'Повторить обновление';
+    } finally {
+      updateInProgress = false; $('installUpdateButton').disabled = false; $('checkUpdatesButton').disabled = false;
+    }
   };
   $('diagnosticsButton').onclick = async () => {
     try {

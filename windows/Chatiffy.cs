@@ -163,7 +163,7 @@ internal sealed class TrayContext : ApplicationContext
             File.Copy(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "update.ps1"), script);
             string install = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
             var info = new ProcessStartInfo("powershell.exe") {
-                Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\" -Version \"" + version + "\" -InstallPath \"" + install + "\" -LauncherPid " + Process.GetCurrentProcess().Id,
+                Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\" -Version \"" + version + "\" -InstallPath \"" + install + "\" -LauncherPid " + Process.GetCurrentProcess().Id + " -StatusPath \"" + Path.Combine(Program.Data, "update-status.json") + "\"",
                 UseShellExecute = true, WorkingDirectory = temp
             };
             // The helper validates and downloads before asking this launcher to quit.
@@ -172,7 +172,11 @@ internal sealed class TrayContext : ApplicationContext
             helper.EnableRaisingEvents = true;
             helper.Exited += delegate { Dispatch(delegate { updating = false; }); helper.Dispose(); };
         }
-        catch (Exception error) { Program.Log(error.ToString()); MessageBox.Show(error.Message, "Ошибка обновления Chatiffy", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        catch (Exception error) {
+            Program.Log(error.ToString());
+            try { File.WriteAllText(Path.Combine(Program.Data, "update-status.json"), "{\"stage\":\"failed\",\"message\":\"Windows could not start the updater. Check the application log.\"}"); } catch { }
+            MessageBox.Show(error.Message, "Ошибка обновления Chatiffy", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void Open(string path)

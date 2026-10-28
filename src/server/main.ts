@@ -7,7 +7,7 @@ import { homedir } from 'node:os';
 import type { BadgeSet, TwitchChannel, HelixResponse, Cosmetics, CosmeticBadge, Paint } from '../shared/contracts.js';
 import { cached, type CacheEntry } from './cache.js';
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { extname, resolve, sep, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +26,7 @@ if (allowedHosts.size === 0) {
   console.warn('ALLOWED_HOSTS is empty; all HTTP requests will be rejected');
 }
 const profiles = new ProfileStore(join(process.env.CHATIFFY_DATA_DIR || join(homedir(), '.chatiffy'), 'profiles'));
+const updateStatusPath = join(process.env.CHATIFFY_DATA_DIR || join(homedir(), '.chatiffy'), 'update-status.json');
 const updates = new Map<string, CacheEntry<ReleaseUpdate>>();
 const desktop = process.env.CHATIFFY_DESKTOP === '1';
 const latestRelease = () => cached(updates, 'latest', 15 * 60 * 1000, () => checkRelease(appVersion, desktop));
@@ -280,10 +281,23 @@ const server = http.createServer(async (request, response) => {
       }
       sendJson(response, 200, await latestRelease(), method); return;
     }
+    if (url.pathname === '/api/desktop/update-status') {
+      if (!desktop) { sendJson(response, 200, { stage: 'idle' }, method); return; }
+      try { sendJson(response, 200, JSON.parse(await readFile(updateStatusPath, 'utf8')), method); }
+      catch { sendJson(response, 200, { stage: 'idle' }, method); }
+      return;
+    }
     if (url.pathname === '/api/desktop/update' && method === 'POST') {
       if (!desktop || appVersion.includes('-')) { sendJson(response, 409, { error: 'Обновление из приложения доступно только в Windows-версии.' }); return; }
       const release = await latestRelease();
       if (!release.available) { sendJson(response, 409, { error: 'Новой версии нет' }); return; }
+      try {
+        const previous = JSON.parse(await readFile(updateStatusPath, 'utf8'));
+        if (!['complete', 'failed', 'idle'].includes(previous.stage) && Date.now() - previous.updatedAt < (previous.stage === 'starting' ? 45000 : 10 * 60 * 1000)) {
+          sendJson(response, 409, { error: 'Обновление уже выполняется. Дождись завершения.' }); return;
+        }
+      } catch { /* First update or no readable progress file. */ }
+      await writeFile(updateStatusPath, JSON.stringify({ stage: 'starting', version: release.latestVersion, updatedAt: Date.now() }), 'utf8');
       console.log(`CHATIFFY_UPDATE ${release.latestVersion}`);
       sendJson(response, 200, { ok: true, version: release.latestVersion }); return;
     }

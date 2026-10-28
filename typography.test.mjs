@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-async function editor(query = '', { storage = new Map(), profiles = new Map(), failedWrites = false, failedReads = false, storageDisabled = false, pathname = '/', previewMode = 'demo' } = {}) {
+async function editor(query = '', { storage = new Map(), profiles = new Map(), failedWrites = false, failedReads = false, storageDisabled = false, pathname = '/', previewMode = 'demo', updateResult = null } = {}) {
   const elements = new Map(); const writes = []; const history = []; const clipboard = [];
   const timers = []; const sockets = [];
   class Socket {
@@ -32,6 +32,8 @@ async function editor(query = '', { storage = new Map(), profiles = new Map(), f
       setItem(k, v) { if (storageDisabled) throw new Error('disabled'); storage.set(k, v); }
     },
     fetch: async (url, options = {}) => {
+      if (updateResult && url === '/api/desktop/update') return Response.json({ ok: true });
+      if (updateResult && url === '/api/desktop/update-status') return Response.json(updateResult);
       const id = url.split('/').at(-1);
       if (options.method === 'PUT') {
         if (failedWrites) return Response.json({ error: 'disk full' }, { status: 503 });
@@ -248,4 +250,21 @@ test('appearance protection reports unavailable browser storage', async () => {
   const { get } = await editor('', { storageDisabled: true });
   await get('lockAppearanceButton').onclick();
   assert.match(get('appearanceLockStatus').textContent, /не заблокировано/);
+});
+
+
+test('updater exposes helper failures and enables retry', async () => {
+  const { get } = await editor('', { updateResult: { stage: 'failed', message: 'SHA-256 mismatch. Nothing installed.' } });
+  await get('installUpdateButton').onclick();
+  assert.match(get('updateStatus').textContent, /SHA-256/);
+  assert.equal(get('installUpdateButton').textContent, 'Повторить обновление');
+  assert.equal(get('installUpdateButton').disabled, false);
+  assert.equal(get('checkUpdatesButton').disabled, false);
+});
+
+test('updater reports completion and hides the installation button', async () => {
+  const { get } = await editor('', { updateResult: { stage: 'complete' } });
+  await get('installUpdateButton').onclick();
+  assert.match(get('updateStatus').textContent, /установлено/);
+  assert.equal(get('installUpdateButton').hidden, true);
 });
