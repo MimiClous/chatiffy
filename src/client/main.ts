@@ -650,7 +650,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   function createOverlayUrl() {
     return new URL(`/overlay?profile=${profileId}`, location.origin).href;
   }
-  let resetDemoPause = () => {};
+  let syncDemoPlayback = () => {};
   let demoIsPaused = false;
   let livePreviewPaused = false;
   let livePreviewChannel = '';
@@ -680,9 +680,18 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
         }
       }
     });
-    resetDemoPause = () => { if (demoIsPaused) { demo.togglePause(); demoIsPaused = false; } };
+    let enginePaused = false;
+    syncDemoPlayback = () => {
+      const shouldPause = demoIsPaused || $('previewSourceInput').value !== 'demo';
+      if (enginePaused !== shouldPause) enginePaused = demo.togglePause();
+    };
+    syncDemoPlayback();
     $('pausePreviewButton').onclick = () => {
-      const paused = $('previewSourceInput').value === 'demo' ? (demoIsPaused = demo.togglePause()) : (livePreviewPaused = !livePreviewPaused);
+      const paused = $('previewSourceInput').value === 'demo' ? (demoIsPaused = !demoIsPaused) : (livePreviewPaused = !livePreviewPaused);
+      syncDemoPlayback();
+      $('previewStatus').textContent = paused
+        ? 'Предпросмотр на паузе · OBS продолжает работать'
+        : $('previewSourceInput').value === 'demo' ? 'Демо-чат · можно сразу настраивать оформление.' : `Ожидаем новые сообщения #${config.channel} · история не загружается`;
       $('pausePreviewButton').textContent = paused ? 'Продолжить чат' : 'Пауза';
       $('pausePreviewButton').setAttribute('aria-pressed', String(paused));
     };
@@ -841,10 +850,14 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   $('previewSourceInput').onchange = () => {
     clearConnectionTimers(); ++connectionGeneration;
     if (socket) { socket.onclose = null; socket.close(); socket = undefined; }
-    resetDemoPause(); livePreviewChannel = ''; livePreviewPaused = false;
+    demoIsPaused = false; syncDemoPlayback(); livePreviewChannel = ''; livePreviewPaused = false;
     chat.replaceChildren(); seenMessageIds.clear(); previewMessages.length = 0;
     $('pausePreviewButton').textContent = 'Пауза'; $('pausePreviewButton').setAttribute('aria-pressed', 'false');
-    $('previewStatus').textContent = $('previewSourceInput').value === 'demo' ? 'Тестовые сообщения · Twitch не подключён' : 'Ожидаем новые сообщения канала';
+    $('previewStatus').textContent = $('previewSourceInput').value === 'demo' ? 'Демо-чат · можно сразу настраивать оформление.' : 'Ожидаем новые сообщения канала · история не загружается';
+    if ($('previewSourceInput').value === 'demo') {
+      $('connectionBadge').classList.remove('visible', 'error');
+      $('debug').textContent = '';
+    }
     renderPreview();
   };
   $('previewZoomInput').onchange = () => {
@@ -903,7 +916,9 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   };
   $('clearPreviewButton').onclick = () => {
     chat.replaceChildren(); previewMessages.length = 0;
-    $('previewStatus').textContent = $('previewSourceInput').value === 'demo'
+    $('previewStatus').textContent = (demoIsPaused || livePreviewPaused)
+      ? 'Предпросмотр очищен · нажмите «Продолжить чат», чтобы появились сообщения'
+      : $('previewSourceInput').value === 'demo'
       ? 'Предпросмотр очищен · следующие тестовые сообщения появятся автоматически'
       : `Предпросмотр очищен · ожидаем новые сообщения #${config.channel}`;
   };

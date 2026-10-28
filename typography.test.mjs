@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-async function editor(query = '', { storage = new Map(), profiles = new Map(), failedWrites = false, failedReads = false, storageDisabled = false, pathname = '/', previewMode = 'live' } = {}) {
+async function editor(query = '', { storage = new Map(), profiles = new Map(), failedWrites = false, failedReads = false, storageDisabled = false, pathname = '/', previewMode = 'demo' } = {}) {
   const elements = new Map(); const writes = []; const history = []; const clipboard = [];
   const timers = []; const sockets = [];
   class Socket {
@@ -182,4 +182,28 @@ test('undo restores appearance while preserving the selected channel', async () 
   await get('copyButton').onclick();
   assert.equal(writes.at(-1).settings.fontSize, Number(before));
   assert.equal(writes.at(-1).settings.channel, 'pwgood');
+});
+
+
+test('demo is the default and switching back closes the Twitch connection', async () => {
+  const { get, sockets } = await editor();
+  assert.equal(sockets.length, 0);
+  assert.ok(get('chat').children.length >= 5);
+  get('previewSourceInput').value = 'live'; get('previewSourceInput').onchange();
+  assert.equal(sockets.length, 1);
+  get('previewSourceInput').value = 'demo'; get('previewSourceInput').onchange();
+  assert.equal(sockets[0].readyState, 3);
+  assert.equal(get('pausePreviewButton').textContent, 'Пауза');
+});
+
+test('clearing a paused preview explains how to resume without changing OBS settings', async () => {
+  const { get, writes } = await editor();
+  const saved = writes.length;
+  get('pausePreviewButton').onclick();
+  get('clearPreviewButton').onclick();
+  assert.equal(get('chat').children.length, 0);
+  assert.match(get('previewStatus').textContent, /Продолжить чат/);
+  assert.equal(writes.length, saved);
+  get('pausePreviewButton').onclick();
+  assert.equal(get('pausePreviewButton').textContent, 'Пауза');
 });
