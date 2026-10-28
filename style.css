@@ -259,3 +259,14 @@ button:disabled { opacity: .5; cursor: wait !important; }
   .controls > *, .preview-column > * { order: initial !important; }
   #settings .intro.splash { margin-bottom: 12px; padding-bottom: 10px; }
 }
+
+/* Flat settings pages: no disclosure menus or floating panels. */
+.controls > [data-editor-page] { display: none; }
+.controls > [data-editor-page].is-active { display: block; }
+.editor-tabs { display: flex; flex-wrap: wrap; gap: 6px; position: sticky; top: 0; z-index: 2; background: var(--ink); padding: 0 0 9px; border-bottom: 1px solid var(--edge); }
+#settings .editor-tabs button { padding: 8px 10px; border: 1px solid var(--edge); color: var(--paper); background: var(--surface); font-size: 11px; }
+#settings .editor-tabs button[aria-pressed="true"] { border-color: var(--mint); color: var(--mint); background: #20332c; }
+#settings .appearance-panel > h3, #settings .profile-manager > h3 { margin: 0 0 14px; font-size: 14px; color: var(--lavender); }
+#settings [data-editor-page] > section { border-top: 1px solid var(--edge); padding: 12px 0; }
+#settings [data-editor-page] h3 { font-size: 12px; color: var(--lavender); margin: 8px 0 12px; }
+#settings [data-editor-page] section section { padding: 8px 0; }

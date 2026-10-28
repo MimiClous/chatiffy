@@ -794,6 +794,17 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     } catch (error) { $('profileHint').textContent = error instanceof Error ? error.message : 'Не удалось создать профиль.'; return false; }
     finally { profileOperation = false; lockProfileControls(false); }
   }
+  function selectEditorTab(name: string) {
+    for (const page of document.querySelectorAll<HTMLElement>('[data-editor-page]')) {
+      page.classList.toggle('is-active', page.dataset.editorPage === name);
+    }
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-editor-tab]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.editorTab === name));
+    }
+  }
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-editor-tab]')) {
+    button.onclick = () => selectEditorTab(button.dataset.editorTab || 'channel');
+  }
   $('previewZoomInput').onchange = () => {
     updateScale();
     try { localStorage.setItem('chatiffy:previewZoom', $('previewZoomInput').value); } catch {}
@@ -943,6 +954,6 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   }
   syncUi();
   void initialize();
-  if (!isOverlay && params.has('updates')) { $('updatesSection').open = true; $('checkUpdatesButton').click(); }
-  if (!isOverlay && params.has('diagnostics')) { $('diagnosticsSection').open = true; $('diagnosticsButton').click(); }
+  if (!isOverlay && params.has('updates')) { selectEditorTab('app'); $('checkUpdatesButton').click(); }
+  if (!isOverlay && params.has('diagnostics')) { selectEditorTab('app'); $('diagnosticsButton').click(); }
 })();
