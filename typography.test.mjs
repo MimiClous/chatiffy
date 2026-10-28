@@ -219,16 +219,6 @@ test('demo restart refills a cleared preview and is disabled for live channels',
   assert.equal(get('restartDemoButton').disabled, true);
 });
 
-test('preview backdrop persists independently of profile settings', async () => {
-  const first = await editor();
-  const count = first.writes.length;
-  first.get('previewBackdropInput').value = 'light'; first.get('previewBackdropInput').onchange();
-  assert.equal(first.get('previewFrame').dataset.backdrop, 'light');
-  assert.equal(first.writes.length, count);
-  const second = await editor('', { storage: first.storage, profiles: first.profiles });
-  assert.equal(second.get('previewBackdropInput').value, 'light');
-});
-
 test('appearance protection survives reload and blocks edits until unlocked', async () => {
   const first = await editor();
   const original = first.get('fontSizeInput').value;

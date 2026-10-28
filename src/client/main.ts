@@ -1,3 +1,4 @@
+import { rgba7tv, paint7tvAuthor } from './seventv-paint.js';
 import { demoIdentities } from './demo-identities.js';
 import { demoEmotes, startDemoChat } from './demo-chat.js';
 import { backupFilename, makeProfileBackup, parseProfileBackup, maxBackupBytes, type ProfileBackup } from '../shared/profile-transfer.js';
@@ -6,7 +7,7 @@ import { appVersion } from '../shared/version.js';
 import { EmoteRegistry, sevenTvProvider } from './providers.js';
 import { fontFamilies, canvasSizes, settingsSchema, readSettings, serializeSettings, settingsVersion, type OverlaySettings } from '../shared/settings.js';
 import { parseTags, parseIrc, twitchEmoteRanges } from './irc.js';
-import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/contracts.js';
+import type { ChatMessage, BadgeSet, Badge, Cosmetics } from '../shared/contracts.js';
 (() => {
   'use strict';
 
@@ -15,7 +16,6 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     appearanceLockStatus: HTMLParagraphElement;
     undoAppearanceButton: HTMLButtonElement;
     restartDemoButton: HTMLButtonElement;
-    previewBackdropInput: HTMLSelectElement;
     clearPreviewButton: HTMLButtonElement;
     previewSourceInput: HTMLSelectElement;
     previewStatus: HTMLParagraphElement;
@@ -412,53 +412,6 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     for (const badge of fallback) if (badge.title === 'Verified' && !next.some(b => b.url === badge.url)) next.push(badge);
     row.querySelector('.badges-preview')?.remove();
     appendBadges(row, next)?.classList.add('badges-preview');
-  }
-
-  function rgba7tv(value: number | null | undefined) {
-    if (typeof value !== 'number' || !Number.isInteger(value)) return '';
-    return `rgba(${(value >>> 24) & 255}, ${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${((value & 255) / 255).toFixed(3)})`;
-  }
-
-  function paint7tvAuthor(author: HTMLElement, paint: Paint | null, fallbackColor: string) {
-    if (!paint) {
-      if (fallbackColor) author.style.color = fallbackColor;
-      return;
-    }
-    author.classList.add('author-painted');
-    const kind = String(paint.function || '').toUpperCase().replaceAll('-', '_');
-    const stops = Array.isArray(paint.stops)
-      ? paint.stops.filter((stop) => Number.isFinite(stop.at) && Number.isInteger(stop.color))
-        .map((stop) => `${rgba7tv(stop.color)} ${Math.max(0, Math.min(100, stop.at * 100))}%`)
-      : [];
-    let background = '';
-    if ((kind === 'LINEAR_GRADIENT' || kind === 'RADIAL_GRADIENT') && stops.length) {
-      const repeat = paint.repeat ? 'repeating-' : '';
-      const prefix = kind === 'LINEAR_GRADIENT' ? `${Number(paint.angle) || 0}deg, ` : `${paint.shape === 'ellipse' ? 'ellipse' : 'circle'}, `;
-      background = `${repeat}${kind === 'LINEAR_GRADIENT' ? 'linear' : 'radial'}-gradient(${prefix}${stops.join(', ')})`;
-    } else if (kind === 'URL' && /^https:\/\/cdn\.7tv\.app\//.test(paint.image_url || '')) {
-      background = `url("${paint.image_url}")`;
-    }
-    const solid = rgba7tv(paint.color) || fallbackColor;
-    if (background) {
-      author.style.backgroundImage = background;
-      author.style.backgroundPosition = 'center';
-      author.style.backgroundSize = 'cover';
-      author.style.backgroundClip = 'text';
-      author.style.webkitBackgroundClip = 'text';
-      author.style.color = 'transparent';
-      author.style.webkitTextFillColor = 'transparent';
-    } else if (solid) {
-      author.style.color = solid;
-    }
-    const shadows = Array.isArray(paint.shadows) ? paint.shadows.slice(0, 8) : [];
-    const filters = shadows.map((shadow) => {
-      const x = Math.max(-20, Math.min(20, Number(shadow.x_offset) || 0));
-      const y = Math.max(-20, Math.min(20, Number(shadow.y_offset) || 0));
-      const radius = Math.max(0, Math.min(20, Number(shadow.radius) || 0));
-      const color = rgba7tv(shadow.color);
-      return color ? `drop-shadow(${x}px ${y}px ${radius}px ${color})` : '';
-    }).filter(Boolean);
-    if (filters.length) author.style.filter = filters.join(' ');
   }
 
   function load7tvCosmetics(userId: string, login: string) {
@@ -916,18 +869,6 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       $('debug').textContent = '';
     }
     renderPreview();
-  };
-  const backdropChoices = ['checker', 'dark', 'light'];
-  let backdrop = 'checker';
-  try { backdrop = localStorage.getItem('chatiffy:previewBackdrop') || backdrop; } catch {}
-  if (!backdropChoices.includes(backdrop)) backdrop = 'checker';
-  $('previewBackdropInput').value = backdrop;
-  $('previewFrame').dataset.backdrop = backdrop;
-  $('previewBackdropInput').onchange = () => {
-    const value = $('previewBackdropInput').value;
-    if (!backdropChoices.includes(value)) return;
-    $('previewFrame').dataset.backdrop = value;
-    try { localStorage.setItem('chatiffy:previewBackdrop', value); } catch {}
   };
   $('previewZoomInput').onchange = () => {
     updateScale();

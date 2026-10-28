@@ -1,6 +1,6 @@
 {
   "name": "chatiffy",
-  "version": "1.5.1",
+  "version": "1.7.1",
   "private": true,
   "type": "module",
   "description": "Customizable Twitch chat overlay for OBS with 7TV emotes and Twitch badges",
