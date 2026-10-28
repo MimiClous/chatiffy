@@ -275,3 +275,7 @@ button:disabled { opacity: .5; cursor: wait !important; }
 @keyframes minecraft-splash { 0%, 100% { transform: rotate(-8deg) scale(.96); } 50% { transform: rotate(-8deg) scale(1.04); } }
 #settings #previewStatus { font-size: 10px; line-height: 1.5; color: var(--mint); margin: 6px 0; }
 @media (prefers-reduced-motion: reduce) { #settings .intro .splash-title { animation: none; } }
+
+#undoAppearanceButton { margin-top: 12px; width: 100%; }
+#clearPreviewButton { padding: 6px 10px; border: 1px solid var(--edge); color: var(--paper); background: var(--ink); font-size: 11px; }
+.preview-heading h2 { margin-right: auto !important; }

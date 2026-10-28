@@ -170,3 +170,16 @@ test('missing persistent profile never connects to the default Twitch channel', 
   assert.equal(overlay.sockets.length, 0);
   assert.match(overlay.get('status').textContent, /не найден/);
 });
+
+test('undo restores appearance while preserving the selected channel', async () => {
+  const { get, writes } = await editor();
+  const before = get('fontSizeInput').value;
+  get('fontSizeInput').value = '40'; get('fontSizeInput').input();
+  get('channelInput').value = 'pwgood'; get('channelInput').input();
+  get('undoAppearanceButton').onclick();
+  assert.equal(get('fontSizeInput').value, before);
+  assert.equal(get('channelInput').value, 'pwgood');
+  await get('copyButton').onclick();
+  assert.equal(writes.at(-1).settings.fontSize, Number(before));
+  assert.equal(writes.at(-1).settings.channel, 'pwgood');
+});

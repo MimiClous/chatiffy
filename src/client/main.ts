@@ -11,6 +11,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   'use strict';
 
   interface Elements {
+    undoAppearanceButton: HTMLButtonElement;
+    clearPreviewButton: HTMLButtonElement;
     previewSourceInput: HTMLSelectElement;
     previewStatus: HTMLParagraphElement;
     previewZoomInput: HTMLSelectElement;
@@ -135,7 +137,19 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     neon: { fontSize: 28, panelOpacity: 28, vignette: 72, radius: 26, background: true, theme: 'neon' },
     transparent: { fontSize: 28, panelOpacity: 0, vignette: 0, radius: 0, background: false, theme: 'glass' }
   };
+  const appearanceHistory: OverlaySettings[] = [];
+  let appearanceBaseline: OverlaySettings | undefined;
+  let appearanceProfile = '';
+  function appearanceKey(settings: OverlaySettings) {
+    const { channel, layout, ...appearance } = settings;
+    return JSON.stringify(appearance);
+  }
   function syncUi() {
+    if (!isOverlay && (appearanceProfile !== profileId || !appearanceBaseline)) {
+      appearanceHistory.length = 0; appearanceProfile = profileId; appearanceBaseline = { ...config };
+    }
+    $('undoAppearanceButton').disabled = !appearanceHistory.length;
+
     for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) {
       const preset = presets[button.dataset.preset || ''];
       const selected = !!preset && Object.entries(preset).every(([key, value]) => config[key as keyof OverlaySettings] === value);
@@ -732,6 +746,11 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     if (!profileReady) return;
     pendingChanges = true;
     if (!readControls()) return;
+    if (appearanceBaseline && appearanceKey(appearanceBaseline) !== appearanceKey(config)) {
+      appearanceHistory.push({ ...appearanceBaseline });
+      if (appearanceHistory.length > 30) appearanceHistory.shift();
+    }
+    appearanceBaseline = { ...config };
     persistLocal(); syncUi();
     $('saveStatus').textContent = 'Есть изменения…'; $('copyButton').disabled = true;
     clearTimeout(saveTimer); saveTimer = setTimeout(() => { void saveProfile(); }, 450);
@@ -762,6 +781,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     $('exportProfileButton').disabled = locked; $('importProfileButton').disabled = locked; $('layoutInput').disabled = locked;
     $('duplicateProfileButton').disabled = locked; $('profileNameInput').disabled = locked;
     for (const control of document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.controls input, .controls select, .controls button')) control.disabled = locked;
+    $('undoAppearanceButton').disabled = locked || !appearanceHistory.length;
     $('copyButton').disabled = locked || pendingChanges || !profileReady;
   }
   async function selectProfile(id: string) {
@@ -880,6 +900,20 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) button.onclick = () => {
     if (!profileReady) return;
     Object.assign(config, presets[button.dataset.preset || '']); syncUi(); changed();
+  };
+  $('clearPreviewButton').onclick = () => {
+    chat.replaceChildren(); previewMessages.length = 0;
+    $('previewStatus').textContent = $('previewSourceInput').value === 'demo'
+      ? 'Предпросмотр очищен · следующие тестовые сообщения появятся автоматически'
+      : `Предпросмотр очищен · ожидаем новые сообщения #${config.channel}`;
+  };
+  $('undoAppearanceButton').onclick = () => {
+    if (!profileReady || profileOperation || !readControls()) return;
+    const previous = appearanceHistory.pop();
+    if (!previous) return;
+    const channel = config.channel; const layout = config.layout;
+    Object.assign(config, previous, { channel, layout });
+    appearanceBaseline = { ...config }; syncUi(); changed();
   };
   $('resetButton').onclick = () => {
     if (!profileReady) return;
