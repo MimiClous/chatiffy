@@ -42,7 +42,7 @@
               <button type="button" data-preset="soft">Стекло</button><button type="button" data-preset="neon">Неон</button><button type="button" data-preset="transparent">Прозрачный</button>
             </div>
           </section>
-          <section class="settings-card appearance-panel" data-editor-page="appearance"><h3>2. Настрой под себя</h3>
+          <section class="settings-card appearance-panel" data-editor-page="appearance"><h3>2. Настрой под себя</h3><button id="lockAppearanceButton" type="button" aria-pressed="false">Защитить оформление</button><p id="appearanceLockStatus" role="status">Изменения оформления сохраняются автоматически.</p>
             <section open><h3>Текст</h3>
               <label>Шрифт <select id="fontFamilyInput"><option value="monocraft">Monocraft</option><option value="segoe">Segoe UI</option><option value="arial">Arial</option><option value="verdana">Verdana</option><option value="georgia">Georgia</option><option value="consolas">Consolas</option></select></label>
               <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>

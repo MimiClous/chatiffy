@@ -11,6 +11,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   'use strict';
 
   interface Elements {
+    lockAppearanceButton: HTMLButtonElement;
+    appearanceLockStatus: HTMLParagraphElement;
     undoAppearanceButton: HTMLButtonElement;
     restartDemoButton: HTMLButtonElement;
     previewBackdropInput: HTMLSelectElement;
@@ -146,11 +148,29 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     const { channel, layout, ...appearance } = settings;
     return JSON.stringify(appearance);
   }
+  function appearanceLocked() {
+    try { return localStorage.getItem(`chatiffy:appearanceLock:${profileId}`) === '1'; } catch { return false; }
+  }
+  function updateAppearanceLock(busy = profileOperation || !profileReady) {
+    if (isOverlay) return;
+    const locked = appearanceLocked();
+    $('lockAppearanceButton').disabled = busy;
+    $('lockAppearanceButton').textContent = locked ? 'Разблокировать оформление' : 'Защитить оформление';
+    $('lockAppearanceButton').setAttribute('aria-pressed', String(locked));
+    $('appearanceLockStatus').textContent = locked
+      ? 'Оформление защищено в этом браузере. Для экспериментов создай копию профиля.'
+      : 'Изменения оформления сохраняются автоматически.';
+    for (const control of document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.appearance-panel input, .appearance-panel select, .appearance-panel button, [data-preset]')) {
+      if (control !== $('lockAppearanceButton')) control.disabled = busy || locked;
+    }
+    $('undoAppearanceButton').disabled = busy || locked || !appearanceHistory.length;
+    $('resetButton').disabled = busy || locked;
+  }
   function syncUi() {
     if (!isOverlay && (appearanceProfile !== profileId || !appearanceBaseline)) {
       appearanceHistory.length = 0; appearanceProfile = profileId; appearanceBaseline = { ...config };
     }
-    $('undoAppearanceButton').disabled = !appearanceHistory.length;
+    updateAppearanceLock();
 
     for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) {
       const preset = presets[button.dataset.preset || ''];
@@ -736,6 +756,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     if (!name) { $('profileHint').textContent = 'Добавь название профиля, чтобы отличать её от остальных.'; $('copyButton').disabled = true; return false; }
     profileName = name.slice(0, 64);
     config.channel = channel;
+    config.layout = settingsSchema.layout.parse($('layoutInput').value);
+    if (appearanceLocked()) return true;
     for (const key of ['layout', 'fontFamily', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'fontSize', 'theme', 'align', 'textColor', 'panelOpacity', 'vignette', 'radius', 'maxMessages'] as const) {
       const element = $(`${key}Input`);
       Object.assign(config, { [key]: settingsSchema[key].parse(element.value) });
@@ -816,6 +838,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     for (const control of document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('.controls input, .controls select, .controls button')) control.disabled = locked;
     $('undoAppearanceButton').disabled = locked || !appearanceHistory.length;
     $('copyButton').disabled = locked || pendingChanges || !profileReady;
+    updateAppearanceLock(locked);
   }
   async function selectProfile(id: string) {
     if (profileOperation || id === profileId) return;
@@ -948,7 +971,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   const controlIds = ['layoutInput', 'channelInput', 'fontFamilyInput', 'fontWeightInput', 'fontStyleInput', 'lineHeightInput', 'letterSpacingInput', 'fontSizeInput', 'backgroundInput', 'themeInput', 'alignInput', 'textColorInput', 'panelOpacityInput', 'vignetteInput', 'radiusInput', 'maxMessagesInput', 'lifetimeInput', 'hideMessagesInput'] as const;
   for (const id of controlIds) $(id).addEventListener('input', changed);
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) button.onclick = () => {
-    if (!profileReady) return;
+    if (!profileReady || appearanceLocked()) return;
     Object.assign(config, presets[button.dataset.preset || '']); syncUi(); changed();
   };
   $('clearPreviewButton').onclick = () => {
@@ -959,8 +982,16 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       ? 'Предпросмотр очищен · следующие тестовые сообщения появятся автоматически'
       : `Предпросмотр очищен · ожидаем новые сообщения #${config.channel}`;
   };
+  $('lockAppearanceButton').onclick = async () => {
+    if (!profileReady || profileOperation) return;
+    const locked = appearanceLocked();
+    if (!locked && !await saveProfile()) return;
+    try { localStorage.setItem(`chatiffy:appearanceLock:${profileId}`, locked ? '0' : '1'); }
+    catch { $('appearanceLockStatus').textContent = 'Браузер запретил сохранение защиты. Оформление не заблокировано.'; return; }
+    updateAppearanceLock();
+  };
   $('undoAppearanceButton').onclick = () => {
-    if (!profileReady || profileOperation || !readControls()) return;
+    if (appearanceLocked() || !profileReady || profileOperation || !readControls()) return;
     const previous = appearanceHistory.pop();
     if (!previous) return;
     const channel = config.channel; const layout = config.layout;
@@ -968,7 +999,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     appearanceBaseline = { ...config }; syncUi(); changed();
   };
   $('resetButton').onclick = () => {
-    if (!profileReady) return;
+    if (!profileReady || appearanceLocked()) return;
     const defaults = readSettings(new URLSearchParams()); defaults.channel = config.channel; defaults.layout = config.layout;
     if (JSON.stringify(config) !== JSON.stringify(defaults) && !confirm('Сбросить оформление? Выбранный канал сохранится.')) return;
     Object.assign(config, defaults); syncUi(); changed();

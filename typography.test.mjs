@@ -226,3 +226,26 @@ test('preview backdrop persists independently of profile settings', async () => 
   const second = await editor('', { storage: first.storage, profiles: first.profiles });
   assert.equal(second.get('previewBackdropInput').value, 'light');
 });
+
+test('appearance protection survives reload and blocks edits until unlocked', async () => {
+  const first = await editor();
+  const original = first.get('fontSizeInput').value;
+  await first.get('lockAppearanceButton').onclick();
+  first.get('fontSizeInput').value = '48'; first.get('fontSizeInput').input();
+  await first.get('copyButton').onclick();
+  assert.equal(first.writes.at(-1).settings.fontSize, Number(original));
+  const second = await editor('', { storage: first.storage, profiles: first.profiles });
+  assert.equal(second.get('lockAppearanceButton').textContent, 'Разблокировать оформление');
+  second.get('resetButton').onclick();
+  assert.equal(second.get('fontSizeInput').value, original);
+  await second.get('lockAppearanceButton').onclick();
+  second.get('fontSizeInput').value = '40'; second.get('fontSizeInput').input();
+  await second.get('copyButton').onclick();
+  assert.equal(second.writes.at(-1).settings.fontSize, 40);
+});
+
+test('appearance protection reports unavailable browser storage', async () => {
+  const { get } = await editor('', { storageDisabled: true });
+  await get('lockAppearanceButton').onclick();
+  assert.match(get('appearanceLockStatus').textContent, /не заблокировано/);
+});
