@@ -22,6 +22,32 @@ function pnpm(...args) {
   run('pnpm', args, { shell: process.platform === 'win32' });
 }
 function checks() { pnpm('run', 'check'); pnpm('test'); }
+async function commitChanges() {
+  const files = [...new Set([
+    ...git('diff', 'HEAD', '--name-only', '--no-renames', '-z').split('\0'),
+    ...git('ls-files', '--others', '--exclude-standard', '-z').split('\0')
+  ].filter(Boolean))];
+  if (!files.length) { console.log('Нет изменений для коммита.'); return; }
+  run('git', ['status', '--short']);
+  files.forEach((file, index) => console.log(`${index + 1}. ${file}`));
+  const selection = (await terminal.question('Номера файлов через пробел, all — все, Enter — отмена: ')).trim();
+  if (!selection) return;
+  const numbers = selection.split(/\s+/).map(Number);
+  if (selection !== 'all' && numbers.some(n => !Number.isInteger(n) || n < 1 || n > files.length)) throw new Error('Неверные номера файлов.');
+  const selected = selection === 'all' ? files : [...new Set(numbers)].map(n => files[n - 1]);
+  run('git', ['add', '--', ...selected]);
+  console.log('В коммит войдут следующие изменения, включая ранее добавленные в Git:');
+  run('git', ['diff', '--cached', '--stat']);
+  if (await terminal.question('Показать полный diff? (y/N): ') === 'y') run('git', ['--no-pager', 'diff', '--cached']);
+  const message = (await terminal.question('Сообщение коммита (Enter — отмена): ')).trim();
+  if (!message) { console.log('Коммит отменён. Выбранные файлы остаются подготовленными в Git.'); return; }
+  run('git', ['commit', '-m', message]);
+  if ((await terminal.question('Отправить текущую ветку в origin? (y/N): ')).trim().toLowerCase() === 'y') {
+    const branch = git('branch', '--show-current');
+    if (!branch) throw new Error('Нет текущей ветки для отправки.');
+    run('git', ['push', '-u', 'origin', branch]);
+  }
+}
 async function release() {
   const version = assertVersion(pkg().version, { stableOnly: true });
   if (git('branch', '--show-current') !== 'main') throw new Error('Для релиза переключись на main.');
@@ -39,7 +65,7 @@ async function release() {
 try {
   let choice;
   do {
-    console.log(`\nChatiffy ${pkg().version} — меню разработчика\n1. Установить зависимости\n2. Собрать и запустить приложение\n3. Проверки и тесты\n4. Собрать клиент и сервер\n5. Собрать Setup и portable локально (Windows)\n6. Изменить номер версии\n7. Выпустить текущую версию через GitHub Actions\n8. Показать состояние Git\n0. Выход`);
+    console.log(`\nChatiffy ${pkg().version} — меню разработчика\n1. Установить зависимости\n2. Собрать и запустить приложение\n3. Проверки и тесты\n4. Собрать клиент и сервер\n5. Собрать Setup и portable локально (Windows)\n6. Изменить номер версии\n7. Выпустить текущую версию через GitHub Actions\n8. Показать состояние Git\n9. Создать коммит и отправить в GitHub\n0. Выход`);
     choice = (await terminal.question('Выбор: ')).trim();
     try {
       switch (choice) {
@@ -63,8 +89,9 @@ try {
         }
         case '7': await release(); break;
         case '8': run('git', ['status', '--short', '--branch']); break;
+        case '9': await commitChanges(); break;
         case '0': break;
-        default: console.log('Выбери пункт от 0 до 8.');
+        default: console.log('Выбери пункт от 0 до 9.');
       }
     } catch (error) { console.error(`\n${error.message}`); }
   } while (choice !== '0');
