@@ -270,3 +270,8 @@ button:disabled { opacity: .5; cursor: wait !important; }
 #settings [data-editor-page] > section { border-top: 1px solid var(--edge); padding: 12px 0; }
 #settings [data-editor-page] h3 { font-size: 12px; color: var(--lavender); margin: 8px 0 12px; }
 #settings [data-editor-page] section section { padding: 8px 0; }
+
+#settings .intro .splash-title { transform: rotate(-8deg); transform-origin: left center; animation: minecraft-splash 1s ease-in-out infinite; width: fit-content; max-width: 92%; }
+@keyframes minecraft-splash { 0%, 100% { transform: rotate(-8deg) scale(.96); } 50% { transform: rotate(-8deg) scale(1.04); } }
+#settings #previewStatus { font-size: 10px; line-height: 1.5; color: var(--mint); margin: 6px 0; }
+@media (prefers-reduced-motion: reduce) { #settings .intro .splash-title { animation: none; } }

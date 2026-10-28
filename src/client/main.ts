@@ -11,6 +11,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   'use strict';
 
   interface Elements {
+    previewSourceInput: HTMLSelectElement;
+    previewStatus: HTMLParagraphElement;
     previewZoomInput: HTMLSelectElement;
     pausePreviewButton: HTMLButtonElement;
     onboarding: HTMLElement;
@@ -117,6 +119,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   let statusHideTimer: ReturnType<typeof setTimeout> | undefined;
   function setStatus(text: string, error = false) {
     $('status').textContent = text;
+    if (!isOverlay) $('previewStatus').textContent = text;
     $('debug').textContent = error ? text : '';
     const badge = $('connectionBadge');
     badge.classList.toggle('error', error);
@@ -463,7 +466,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   function render7tvText(container: HTMLElement, text: string) {
     const parts = text.split(/(\s+)/);
     for (const part of parts) {
-      const url = isOverlay ? emotes7tv.get(part) : demoEmotes.get(part);
+      const url = (isOverlay || $('previewSourceInput').value !== 'demo') ? emotes7tv.get(part) : demoEmotes.get(part);
       container.append(url ? image(url, part) : document.createTextNode(part));
     }
   }
@@ -491,7 +494,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     author.style.color = message.tags.color || '#b89cff';
     author.textContent = `${message.tags['display-name'] || message.user}:`;
     renderBadges(row, message.tags.badges);
-    if (!isOverlay) {
+    if (!isOverlay && $('previewSourceInput').value === 'demo') {
       const identity = Object.values(demoIdentities).find(item => item.userId === row.dataset.userId);
       if (identity) {
         appendBadges(row, identity.badges)?.classList.add('badges-preview');
@@ -503,7 +506,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     chat.append(row);
     render7tvCosmetics(row, author, row.dataset.userId, message.user);
     while (chat.children.length > config.maxMessages) chat.firstElementChild?.remove();
-    if (isOverlay && config.lifetime > 0) setTimeout(() => removeMessage(row), config.lifetime * 1000);
+    if ((isOverlay || $('previewSourceInput').value !== 'demo') && config.lifetime > 0) setTimeout(() => removeMessage(row), config.lifetime * 1000);
   }
 
   function handleModerationLine(line: string) {
@@ -601,7 +604,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
         }
         if (line.includes(' CLEARMSG ') || line.includes(' CLEARCHAT ')) handleModerationLine(line);
         const message = parseIrc(line);
-        if (message) showMessage(message);
+        if (message && (isOverlay || (!livePreviewPaused && $('previewSourceInput').value !== 'demo'))) showMessage(message);
       }
     };
 
@@ -633,13 +636,22 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   function createOverlayUrl() {
     return new URL(`/overlay?profile=${profileId}`, location.origin).href;
   }
+  let resetDemoPause = () => {};
+  let demoIsPaused = false;
+  let livePreviewPaused = false;
+  let livePreviewChannel = '';
   let previewStarted = false;
   const previewMessages: { row: HTMLElement; time: number }[] = [];
   function renderPreview() {
+    if (profileReady && $('previewSourceInput').value !== 'demo' && livePreviewChannel !== config.channel) {
+      livePreviewChannel = config.channel; chat.replaceChildren(); seenMessageIds.clear();
+      connect(); void refreshAssets(config.channel);
+    }
     while (chat.children.length > config.maxMessages) chat.firstElementChild?.remove();
     if (previewStarted) return;
     previewStarted = true;
     const demo = startDemoChat((message, time) => {
+      if ($('previewSourceInput').value !== 'demo') return;
       showMessage(message);
       if ($('previewZoomInput').value === 'actual') $('previewFrame').scrollTop = $('previewFrame').scrollHeight;
       const row = chat.lastElementChild as HTMLElement | null;
@@ -654,8 +666,9 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
         }
       }
     });
+    resetDemoPause = () => { if (demoIsPaused) { demo.togglePause(); demoIsPaused = false; } };
     $('pausePreviewButton').onclick = () => {
-      const paused = demo.togglePause();
+      const paused = $('previewSourceInput').value === 'demo' ? (demoIsPaused = demo.togglePause()) : (livePreviewPaused = !livePreviewPaused);
       $('pausePreviewButton').textContent = paused ? 'Продолжить чат' : 'Пауза';
       $('pausePreviewButton').setAttribute('aria-pressed', String(paused));
     };
@@ -805,6 +818,15 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-editor-tab]')) {
     button.onclick = () => selectEditorTab(button.dataset.editorTab || 'channel');
   }
+  $('previewSourceInput').onchange = () => {
+    clearConnectionTimers(); ++connectionGeneration;
+    if (socket) { socket.onclose = null; socket.close(); socket = undefined; }
+    resetDemoPause(); livePreviewChannel = ''; livePreviewPaused = false;
+    chat.replaceChildren(); seenMessageIds.clear(); previewMessages.length = 0;
+    $('pausePreviewButton').textContent = 'Пауза'; $('pausePreviewButton').setAttribute('aria-pressed', 'false');
+    $('previewStatus').textContent = $('previewSourceInput').value === 'demo' ? 'Тестовые сообщения · Twitch не подключён' : 'Ожидаем новые сообщения канала';
+    renderPreview();
+  };
   $('previewZoomInput').onchange = () => {
     updateScale();
     try { localStorage.setItem('chatiffy:previewZoom', $('previewZoomInput').value); } catch {}
@@ -940,8 +962,8 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   }
   addEventListener('resize', updateScale);
   if (!isOverlay && typeof ResizeObserver !== 'undefined') new ResizeObserver(updateScale).observe($('previewFrame'));
-  addEventListener('offline', () => { if (isOverlay) { clearConnectionTimers(); socket?.close(); setStatus('Нет подключения к интернету', true); } });
-  addEventListener('online', () => { if (isOverlay && (profileId ? revision : true)) connect(); else if (!isOverlay) void saveProfile(); });
+  addEventListener('offline', () => { if (isOverlay || $('previewSourceInput').value !== 'demo') { clearConnectionTimers(); socket?.close(); setStatus('Нет подключения к интернету', true); } });
+  addEventListener('online', () => { if ((isOverlay && (profileId ? revision : true)) || (!isOverlay && profileReady && $('previewSourceInput').value !== 'demo')) connect(); else if (!isOverlay) void saveProfile(); });
   addEventListener('beforeunload', (event) => {
     if (!isOverlay && pendingChanges) { event.preventDefault(); event.returnValue = ''; return; }
     stopped = true; clearTimeout(saveTimer); clearConnectionTimers(); if (socket) { socket.onclose = null; socket.close(); } });

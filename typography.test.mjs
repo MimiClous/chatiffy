@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-async function editor(query = '', { storage = new Map(), profiles = new Map(), failedWrites = false, failedReads = false, storageDisabled = false, pathname = '/' } = {}) {
+async function editor(query = '', { storage = new Map(), profiles = new Map(), failedWrites = false, failedReads = false, storageDisabled = false, pathname = '/', previewMode = 'live' } = {}) {
   const elements = new Map(); const writes = []; const history = []; const clipboard = [];
   const timers = []; const sockets = [];
   class Socket {
@@ -22,6 +22,7 @@ async function editor(query = '', { storage = new Map(), profiles = new Map(), f
     focus() {}, select() {}, setAttribute() {}, remove() {}, click() { return this.onclick(); }
   });
   const get = id => { if (!elements.has(id)) elements.set(id, make()); return elements.get(id); };
+  get('previewSourceInput').value = previewMode;
   get('copyButton').disabled = true;
   const context = {
     document: { getElementById: get, createElement: make, createTextNode: text => ({ textContent: text }), documentElement: get('root'), body: get('body'), querySelectorAll: () => [] },
@@ -63,7 +64,7 @@ test('new editor automatically saves a profile and produces a stable OBS link', 
 });
 
 test('changing typography updates actual message preview and saves through copy', async () => {
-  const { get, writes, clipboard } = await editor();
+  const { get, writes, clipboard } = await editor('', { previewMode: 'demo' });
   const url = get('overlayUrlOutput').value;
   get('fontFamilyInput').value = 'arial'; get('fontFamilyInput').input();
   assert.equal(get('chat').style.values['--chat-font'], 'Arial, sans-serif');
