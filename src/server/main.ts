@@ -48,6 +48,7 @@ const contentTypes: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon'
 };
@@ -60,7 +61,18 @@ const publicFiles = new Map([
   ['/overlay', 'index.html'],
   ['/index.html', 'index.html'],
   ['/app.js', 'build/app.js'],
-  ['/style.css', 'style.css']
+  ['/style.css', 'style.css'],
+  ['/assets/emotes/sus.webp', 'assets/emotes/sus.webp'],
+  ['/assets/emotes/Lovegers.webp', 'assets/emotes/Lovegers.webp'],
+  ['/assets/emotes/monka.webp', 'assets/emotes/monka.webp'],
+  ['/assets/emotes/monkaSTEER.webp', 'assets/emotes/monkaSTEER.webp'],
+  ['/assets/emotes/happie.webp', 'assets/emotes/happie.webp'],
+  ['/assets/emotes/kekBomb.webp', 'assets/emotes/kekBomb.webp'],
+  ['/assets/emotes/PagMan.webp', 'assets/emotes/PagMan.webp'],
+  ['/assets/emotes/Sadge.webp', 'assets/emotes/Sadge.webp'],
+  ['/assets/emotes/Aware.webp', 'assets/emotes/Aware.webp'],
+  ['/assets/emotes/BASED.webp', 'assets/emotes/BASED.webp'],
+  ['/assets/emotes/Panic.webp', 'assets/emotes/Panic.webp'],
 ]);
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = apiTimeoutMs) {
@@ -262,6 +274,10 @@ const server = http.createServer(async (request, response) => {
       return;
     }
     if (url.pathname === '/api/updates') {
+      if (url.searchParams.get('refresh') === '1') {
+        const entry = updates.get('latest');
+        if (entry) entry.expiresAt = 0;
+      }
       sendJson(response, 200, await latestRelease(), method); return;
     }
     if (url.pathname === '/api/desktop/update' && method === 'POST') {

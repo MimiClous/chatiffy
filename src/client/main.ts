@@ -125,13 +125,25 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     if (!error && text.startsWith('Онлайн')) statusHideTimer = setTimeout(() => badge.classList.remove('visible'), 1800);
   }
 
+  const presets: Record<string, Partial<OverlaySettings>> = {
+    pixel: { fontSize: 28, panelOpacity: 32, vignette: 0, radius: 0, background: true, theme: 'pixel' },
+    soft: { fontSize: 28, panelOpacity: 32, vignette: 55, radius: 24, background: false, theme: 'glass' },
+    compact: { fontSize: 22, panelOpacity: 45, vignette: 35, radius: 12, background: false, theme: 'clean' },
+    neon: { fontSize: 28, panelOpacity: 28, vignette: 72, radius: 26, background: true, theme: 'neon' },
+    transparent: { fontSize: 28, panelOpacity: 0, vignette: 0, radius: 0, background: false, theme: 'glass' }
+  };
   function syncUi() {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) {
+      const preset = presets[button.dataset.preset || ''];
+      const selected = !!preset && Object.entries(preset).every(([key, value]) => config[key as keyof OverlaySettings] === value);
+      button.setAttribute('aria-pressed', String(selected));
+    }
     $('channelInput').value = String(config.channel);
     $('layoutInput').value = config.layout;
     const canvas = canvasSizes[config.layout];
-    $('sourceDimensions').textContent = `В OBS: ширина ${canvas.width}, высота ${canvas.height}.`;
+    $('sourceDimensions').textContent = `Размер только для предпросмотра: ${canvas.width} × ${canvas.height}. Размер источника задаётся вручную в OBS.`;
     $('obsHelp').textContent = `В OBS: «Источники» → «+» → «Браузер». Вставь ссылку, укажи ширину ${canvas.width} и высоту ${canvas.height}. После добавления оформление обновляется автоматически.`;
-    $('sceneSummary').textContent = `«${profileName}» · #${config.channel} · ${canvas.width} × ${canvas.height}`;
+    $('sceneSummary').textContent = `«${profileName}» · #${config.channel}`;
     for (const key of ['fontFamily', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing'] as const) $(`${key}Input`).value = String(config[key]);
     $('lineHeightOutput').value = config.lineHeight.toFixed(2);
     $('letterSpacingOutput').value = `${config.letterSpacing} px`;
@@ -732,6 +744,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     } catch { updateProfileOption(); $('profileHint').textContent = 'Список сцен недоступен. Текущий профиль открыт; обнови страницу для повторной загрузки списка.'; }
   }
   function lockProfileControls(locked: boolean) {
+    $('retrySaveButton').disabled = locked;
     $('profileSelect').disabled = locked; $('newProfileButton').disabled = locked;
     $('exportProfileButton').disabled = locked; $('importProfileButton').disabled = locked; $('layoutInput').disabled = locked;
     $('duplicateProfileButton').disabled = locked; $('profileNameInput').disabled = locked;
@@ -822,21 +835,14 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
   $('overlayUrlOutput').onclick = () => $('overlayUrlOutput').select();
   $('retrySaveButton').onclick = () => { if (profileReady) void saveProfile(); else void initialize(); };
   $('copyButton').onclick = async () => {
-    if (!await saveProfile()) return;
+    if (profileOperation || !profileReady || !await saveProfile()) return;
     try { await navigator.clipboard.writeText(createOverlayUrl()); $('copyButton').textContent = 'Ссылка скопирована ✓'; }
     catch { prompt('Скопируйте ссылку для OBS:', createOverlayUrl()); }
     $('obsHelp').hidden = false;
     setTimeout(() => { $('copyButton').textContent = 'Скопировать ссылку для OBS'; }, 2000);
   };
   const controlIds = ['layoutInput', 'channelInput', 'fontFamilyInput', 'fontWeightInput', 'fontStyleInput', 'lineHeightInput', 'letterSpacingInput', 'fontSizeInput', 'backgroundInput', 'themeInput', 'alignInput', 'textColorInput', 'panelOpacityInput', 'vignetteInput', 'radiusInput', 'maxMessagesInput', 'lifetimeInput', 'hideMessagesInput'] as const;
-  for (const id of controlIds) $(id).addEventListener(id === 'channelInput' ? 'change' : 'input', changed);
-  const presets: Record<string, Partial<OverlaySettings>> = {
-    pixel: { fontSize: 28, panelOpacity: 32, vignette: 0, radius: 0, background: true, theme: 'pixel' },
-    soft: { fontSize: 28, panelOpacity: 32, vignette: 55, radius: 24, background: false, theme: 'glass' },
-    compact: { fontSize: 22, panelOpacity: 45, vignette: 35, radius: 12, background: false, theme: 'clean' },
-    neon: { fontSize: 28, panelOpacity: 28, vignette: 72, radius: 26, background: true, theme: 'neon' },
-    transparent: { fontSize: 28, panelOpacity: 0, vignette: 0, radius: 0, background: false, theme: 'glass' }
-  };
+  for (const id of controlIds) $(id).addEventListener('input', changed);
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preset]')) button.onclick = () => {
     if (!profileReady) return;
     Object.assign(config, presets[button.dataset.preset || '']); syncUi(); changed();
@@ -852,7 +858,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
     $('checkUpdatesButton').disabled = true; $('updateStatus').textContent = 'Проверяем GitHub…';
     $('installUpdateButton').hidden = true; $('releaseLink').hidden = true;
     try {
-      const response = await fetchWithTimeout('/api/updates', {}, 12000);
+      const response = await fetchWithTimeout('/api/updates?refresh=1', {}, 12000);
       const data = await response.json() as { error?: string; available: boolean; desktop: boolean; latestVersion: string; releaseUrl: string };
       if (!response.ok) throw new Error(data.error || 'Не удалось проверить обновления');
       $('updateStatus').textContent = appVersion.includes('-') ? 'Тестовая сборка. Автообновление отключено; следующую тестовую версию скачай из GitHub Actions.' : data.available ? `Доступна версия ${data.latestVersion}` : 'Установлена актуальная версия.';
@@ -868,6 +874,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       if (!response.ok) { const data = await response.json(); throw new Error(data.error); }
       $('updateStatus').textContent = 'Открыто окно обновления Windows. Оно скачает и проверит архив, затем перезапустит Chatiffy. После запуска обнови эту страницу.';
     } catch (error) { $('updateStatus').textContent = error instanceof Error ? error.message : 'Ошибка обновления'; $('installUpdateButton').disabled = false; }
+    finally { $('installUpdateButton').disabled = false; }
   };
   $('diagnosticsButton').onclick = async () => {
     try {

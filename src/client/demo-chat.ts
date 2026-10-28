@@ -4,12 +4,17 @@ import type { ChatMessage } from '../shared/contracts.js';
 
 export const demoEmotes = new Map([
   // Verified against PWGood's public 7TV set 61c802080bf6300371940381.
-  ['kekBomb', 'https://cdn.7tv.app/emote/01FAKB7TWR0002EV4FV333ASYK/2x.webp'],
-  ['Aware', 'https://cdn.7tv.app/emote/01FFWH9WV80000JT8GHDKHJNZC/2x.webp'],
-  ['sus', 'https://cdn.7tv.app/emote/01FWC49KR80005X0GSGVKFJSPZ/2x.webp'],
-  ['monka', 'https://cdn.7tv.app/emote/01GHVG4RS0000E5SWZ7PF777JQ/2x.webp'],
-  ['Panic', 'https://cdn.7tv.app/emote/01GA9PTTXG0008XHFRJVH0QGND/2x.webp'],
-  ['PagMan', 'https://cdn.7tv.app/emote/01EZPHAJ3R000C438200A44F19/2x.webp']
+  ['kekBomb', '/assets/emotes/kekBomb.webp'],
+  ['Aware', '/assets/emotes/Aware.webp'],
+  ['sus', '/assets/emotes/sus.webp'],
+  ['monka', '/assets/emotes/monka.webp'],
+  ['Panic', '/assets/emotes/Panic.webp'],
+  ['PagMan', '/assets/emotes/PagMan.webp'],
+  ['Lovegers', '/assets/emotes/Lovegers.webp'],
+  ['BASED', '/assets/emotes/BASED.webp'],
+  ['Sadge', '/assets/emotes/Sadge.webp'],
+  ['monkaSTEER', '/assets/emotes/monkaSTEER.webp'],
+  ['happie', '/assets/emotes/happie.webp']
 ]);
 
 // Fictional conversation with parody nicknames, mixed with short sourced community memes.

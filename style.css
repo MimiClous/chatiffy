@@ -85,7 +85,7 @@ button, input, select { font: inherit; }
 #settings button:active { translate: 1px 1px; }
 .presets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .presets button { border: 2px solid var(--edge); background: var(--ink); font-size: 11px; }
-.presets button:first-child { border-color: var(--lavender); color: #d9cbff; }
+.presets button[aria-pressed="true"] { border-color: var(--lavender); color: #d9cbff; }
 #settings p { color: #b5abc7; font-size: 11px; line-height: 1.7; }
 #overlayUrlOutput { width: 100%; font-size: 11px; color: var(--mint); }
 #debug:empty { display: none; }

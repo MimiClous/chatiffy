@@ -39,7 +39,7 @@ export const sevenTvProvider: EmoteProvider = {
   id: '7tv',
   async load({ twitchId, fetch }) {
     const results = await Promise.allSettled([
-      fetch(`https://7tv.io/v3/users/twitch/${twitchId}`), fetch('https://7tv.io/v3/emote-sets/global')
+      fetch('https://7tv.io/v3/emote-sets/global'), fetch(`https://7tv.io/v3/users/twitch/${twitchId}`)
     ]);
     const emotes = new Map<string, string>();
     for (const result of results) if (result.status === 'fulfilled' && result.value.ok) {
