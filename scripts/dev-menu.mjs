@@ -51,7 +51,16 @@ async function commitChanges() {
 async function release() {
   const version = assertVersion(pkg().version, { stableOnly: true });
   if (git('branch', '--show-current') !== 'main') throw new Error('Для релиза переключись на main.');
-  if (git('status', '--porcelain')) throw new Error('Сначала проверь и закоммить изменения. Меню не добавляет файлы автоматически.');
+  if (git('status', '--porcelain')) {
+    console.log('Перед выпуском нужно сохранить изменения в Git:');
+    run('git', ['status', '--short']);
+    if ((await terminal.question('Открыть создание коммита сейчас? (y/N): ')).trim().toLowerCase() !== 'y') {
+      console.log('Выпуск отменён. Создай коммит пунктом 9, затем повтори пункт 7.'); return;
+    }
+    await commitChanges();
+    if (git('status', '--porcelain')) throw new Error('Остались незакоммиченные изменения. Выпуск остановлен; проверь пункт 8.');
+    if (pkg().version !== version) throw new Error('Версия изменилась. Запусти пункт 7 заново.');
+  }
   if (!readFileSync('windows/RELEASE.md', 'utf8').includes(`### Chatiffy ${version}`)) throw new Error('Добавь описание этой версии в windows/RELEASE.md.');
   if (git('tag', '--list', `v${version}`) || git('ls-remote', '--tags', 'origin', `refs/tags/v${version}`)) throw new Error('Этот тег уже существует. Выбери новую версию.');
   checks();
