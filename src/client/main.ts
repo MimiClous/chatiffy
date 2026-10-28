@@ -198,7 +198,7 @@ import type { ChatMessage, BadgeSet, Badge, Cosmetics, Paint } from '../shared/c
       const native = $('previewZoomInput').value === 'actual';
       frame.classList.toggle('preview-native', native);
       frame.style.setProperty('--preview-ratio', `${canvas.width} / ${canvas.height}`);
-      frame.style.setProperty('--preview-width', `${Math.min(430, 640 * canvas.width / canvas.height)}px`);
+      frame.style.setProperty('--preview-width', `${Math.min(430, Math.max(120, innerHeight - 350) * canvas.width / canvas.height)}px`);
       const previewScale = native ? 1 : Math.max(.01, frame.clientWidth / canvas.width);
       chat.style.width = `${canvas.width}px`;
       chat.style.height = `${canvas.height}px`;

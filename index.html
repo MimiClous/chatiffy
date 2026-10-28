@@ -35,7 +35,7 @@
               <button type="button" data-preset="soft">Стекло</button><button type="button" data-preset="neon">Неон</button><button type="button" data-preset="transparent">Прозрачный</button>
             </div>
           </section>
-          <section class="settings-card"><h2>2. Настрой под себя</h2>
+          <details class="settings-card appearance-panel"><summary>2. Настрой под себя</summary>
             <details open><summary>Текст</summary>
               <label>Шрифт <select id="fontFamilyInput"><option value="monocraft">Monocraft</option><option value="segoe">Segoe UI</option><option value="arial">Arial</option><option value="verdana">Verdana</option><option value="georgia">Georgia</option><option value="consolas">Consolas</option></select></label>
               <label>Размер текста <input id="fontSizeInput" type="range" min="16" max="48" value="28"><output id="fontSizeOutput">28 px</output></label>
@@ -64,10 +64,7 @@
               <label id="lifetimeLabel">Скрывать через <input id="lifetimeInput" type="range" min="1" max="120" value="30"><output id="lifetimeOutput">30 сек</output></label>
             </details>
             <button id="resetButton" class="secondary" type="button">Сбросить оформление</button>
-          </section>
-        </div>
-        <div class="preview-column">
-          <section class="settings-card preview-card"><div class="preview-heading"><h2>Предпросмотр</h2><button id="pausePreviewButton" type="button" aria-pressed="false">Пауза</button></div><label class="layout-control">Формат предпросмотра <select id="layoutInput"><option value="standard">Обычный · 600 × 900</option><option value="vertical">Вертикальный · 540 × 960</option></select></label><label class="preview-zoom">Масштаб предпросмотра <select id="previewZoomInput"><option value="fit">Вписать целиком</option><option value="actual">100% — размер текста как в OBS</option></select></label><div id="previewFrame" aria-label="Предпросмотр чата"></div><p id="sourceDimensions">В OBS: ширина 600, высота 900.</p></section>
+          </details>
           <section class="settings-card export-card"><h2>3. Добавь в OBS</h2>
             <p id="sceneSummary" class="scene-summary"></p>
             <p id="saveStatus" role="status" aria-live="polite">Загрузка настроек…</p>
@@ -85,6 +82,10 @@
             <p>Перед обновлением сохрани работу в OBS: чат ненадолго отключится. Настройки и постоянная ссылка сохранятся.</p>
           </details>
           <details id="diagnosticsSection" class="settings-card"><summary>Диагностика</summary><button id="diagnosticsButton" type="button">Проверить локальный сервер</button><pre id="diagnosticsOutput"></pre></details>
+        </div>
+        <div class="preview-column">
+          <section class="settings-card preview-card"><div class="preview-heading"><h2>Предпросмотр</h2><button id="pausePreviewButton" type="button" aria-pressed="false">Пауза</button></div><label class="layout-control">Формат предпросмотра <select id="layoutInput"><option value="standard">Обычный · 600 × 900</option><option value="vertical">Вертикальный · 540 × 960</option></select></label><label class="preview-zoom">Масштаб предпросмотра <select id="previewZoomInput"><option value="fit">Вписать целиком</option><option value="actual">100% — размер текста как в OBS</option></select></label><div id="previewFrame" aria-label="Предпросмотр чата"></div><p id="sourceDimensions">В OBS: ширина 600, высота 900.</p></section>
+
         </div>
       </div>
     </div>
