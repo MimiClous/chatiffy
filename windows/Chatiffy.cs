@@ -96,7 +96,7 @@ internal sealed class TrayContext : ApplicationContext
         open.Enabled = false;
         open.Click += delegate { Open(Program.Url); };
         var menu = new ContextMenuStrip();
-        menu.Renderer = new ToolStripProfessionalRenderer(new PixelColors());
+        menu.Renderer = new PixelMenuRenderer();
         menu.BackColor = Color.FromArgb(29, 25, 41);
         menu.ForeColor = Color.FromArgb(244, 240, 255);
         // WinForms TextRenderer uses GDI; register privately as well as with GDI+.
@@ -134,6 +134,10 @@ internal sealed class TrayContext : ApplicationContext
         advanced.DropDownItems.Add("Настройки Twitch", null, delegate { Open(Program.Config); });
         advanced.DropDownItems.Add("Открыть журнал", null, delegate { Open(Program.LogFile); });
         advanced.DropDownItems.Add("Перезапустить сервер", null, delegate { StopServer(); StartServer(); });
+        advanced.DropDown.BackColor = Color.FromArgb(29, 25, 41);
+        advanced.DropDown.ForeColor = Color.FromArgb(244, 240, 255);
+        advanced.DropDown.Renderer = new PixelMenuRenderer();
+        advanced.DropDown.Font = menu.Font;
         menu.Items.Add(advanced);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Выход", null, delegate { ExitThread(); });
@@ -302,6 +306,29 @@ internal static class StartupRegistration
     }
 }
 
+internal sealed class PixelMenuRenderer : ToolStripProfessionalRenderer
+{
+    internal PixelMenuRenderer() : base(new PixelColors()) { RoundedEdges = false; }
+    protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e) {
+        e.TextColor = e.Item.Enabled ? Color.FromArgb(244, 240, 255) : Color.FromArgb(155, 145, 175);
+        base.OnRenderItemText(e);
+    }
+    protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e) {
+        e.ArrowColor = e.Item.Enabled ? Color.FromArgb(101, 224, 188) : Color.FromArgb(155, 145, 175);
+        base.OnRenderArrow(e);
+    }
+    protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e) {
+        var r = e.ImageRectangle;
+        using (var pen = new Pen(Color.FromArgb(101, 224, 188), 2)) {
+            e.Graphics.DrawLines(pen, new Point[] {
+                new Point(r.Left + 2, r.Top + r.Height / 2),
+                new Point(r.Left + r.Width / 2 - 1, r.Bottom - 3),
+                new Point(r.Right - 2, r.Top + 3)
+            });
+        }
+    }
+}
+
 internal sealed class PixelColors : ProfessionalColorTable
 {
     public PixelColors() { UseSystemColors = false; }
@@ -309,6 +336,17 @@ internal sealed class PixelColors : ProfessionalColorTable
     public override Color MenuBorder { get { return Color.FromArgb(167, 139, 250); } }
     public override Color MenuItemBorder { get { return Color.FromArgb(101, 224, 188); } }
     public override Color MenuItemSelected { get { return Color.FromArgb(65, 50, 83); } }
+    public override Color MenuItemSelectedGradientBegin { get { return MenuItemSelected; } }
+    public override Color MenuItemSelectedGradientEnd { get { return MenuItemSelected; } }
+    public override Color MenuItemPressedGradientBegin { get { return MenuItemSelected; } }
+    public override Color MenuItemPressedGradientMiddle { get { return MenuItemSelected; } }
+    public override Color MenuItemPressedGradientEnd { get { return MenuItemSelected; } }
+    public override Color ImageMarginGradientBegin { get { return ToolStripDropDownBackground; } }
+    public override Color ImageMarginGradientMiddle { get { return ToolStripDropDownBackground; } }
+    public override Color ImageMarginGradientEnd { get { return ToolStripDropDownBackground; } }
+    public override Color CheckBackground { get { return ToolStripDropDownBackground; } }
+    public override Color CheckSelectedBackground { get { return MenuItemSelected; } }
+    public override Color CheckPressedBackground { get { return MenuItemSelected; } }
     public override Color SeparatorDark { get { return Color.FromArgb(59, 50, 79); } }
     public override Color SeparatorLight { get { return Color.FromArgb(59, 50, 79); } }
 }
